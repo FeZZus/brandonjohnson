@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { RankedPostcode } from '../../api/postcodes/route';
+import type { RankedPostcode } from '../api/postcodes/route';
 
 // Uniform marker style - all same color and size, larger for area visualization
 const MARKER_COLOR = '#3B82F6'; // Blue color for all markers
@@ -99,6 +99,7 @@ interface DynamicMapProps {
     postcodes?: RankedPostcode[];
     hoveredPostcode?: string | null;
     onMarkerClick?: (postcode: RankedPostcode) => void;
+    onMarkerHover?: (postcode: string | null) => void;
 }
 
 export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover }: DynamicMapProps) {
