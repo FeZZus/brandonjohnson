@@ -17,7 +17,7 @@ export default function InsightPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
-    const [radius, setRadius] = useState('');
+    const [radius, setRadius] = useState('5');
     const [description, setDescription] = useState('');
     const [rankedPostcodes, setRankedPostcodes] = useState<RankedPostcode[]>([]);
     const [loadingPostcodes, setLoadingPostcodes] = useState(false);
@@ -88,6 +88,10 @@ export default function InsightPage() {
     const handleSearch = async () => {
         if (!location.trim()) {
             setError('Please enter a location');
+            return;
+        }
+        if (!radius || parseFloat(radius) <= 0) {
+            setError('Please enter a valid radius');
             return;
         }
 
