@@ -235,8 +235,7 @@ export default function InsightPage() {
 
             {/* Map Container */}
             <div className="flex-1 relative h-full">
-                <DynamicMap
-                    postcodes={rankedPostcodes}
+                
                 <DynamicMap
                     postcodes={rankedPostcodes}
                     hoveredPostcode={hoveredPostcode}
