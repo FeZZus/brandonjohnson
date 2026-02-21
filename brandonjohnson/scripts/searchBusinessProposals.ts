@@ -95,8 +95,14 @@ type RateGraphPoint = {
   approvalRate: number;
 };
 
-function genGraphPoints(applications: Application[]) {
+type ApprovalRateResult = {
+  graphPoints: RateGraphPoint[];
+  avgApprovalRate: number;
+};
+function genApprovalRate(applications: Application[]) : ApprovalRateResult {
   const byYear: Record<string, YearStats> = {};
+  const totalApproved = applications.filter((app) => app.normalised_decision === "Approved").length;
+  const avgApprovalRate = applications.length ? totalApproved / applications.length * 100 : 0;
 
   for (const app of applications) {
     if (!app.application_date){
@@ -132,9 +138,14 @@ function genGraphPoints(applications: Application[]) {
     name: year,
     approvalRate: stats.approvalRate,
   }));
-  return graphPoints;
+  return {graphPoints, avgApprovalRate};
 }
 
+
+type CategoryChartPoint = {
+  name: string;
+  value: number;
+}
 // --- Main function ---
 
 async function searchBusinessProposals(params: {
@@ -149,7 +160,7 @@ async function searchBusinessProposals(params: {
   all: Application[];
   filtered: Application[];
   useTypes: UseTypeMatch[];
-  graphPoints: RateGraphPoint[];
+  approvalRateResult: ApprovalRateResult;
 }> {
   const token = process.env.IBEX_API_KEY;
   if (!token) throw new Error("IBEX_API_KEY environment variable is not set");
@@ -241,11 +252,21 @@ async function searchBusinessProposals(params: {
     }
   }
 
+  const byUseType: Record<string, UseTypeMatch[]> = {};
+  for (const m of useTypes) {
+    (byUseType[m.useType] ??= []).push(m);
+  }
+
+
+  const categoryChartPoints: CategoryChartPoint[] = [];
+  for (const [useType, matches] of Object.entries(byUseType)) {
+    categoryChartPoints.push({ name: useType, value: matches.length });
+  }
+
   // Stage 3: date categorisation
-  const graphPoints = genGraphPoints(all);
+  const approvalRateResult = genApprovalRate(all);
 
-
-  return { all, filtered, useTypes, graphPoints };
+  return { all, filtered, useTypes, approvalRateResult };
 }
 
 
@@ -290,9 +311,9 @@ async function main() {
   console.log(`\nBy use type (${result.useTypes.length} categorised):`);
   for (const [useType, matches] of Object.entries(byUseType)) {
     console.log(`  ${useType} (${matches.length}):`);
-    // for (const m of matches) {
-    //   console.log(`    [${m.application.planning_reference}] ${m.application.proposal ?? "—"}`);
-    // }
+    for (const m of matches) {
+      console.log(`    [${m.application.planning_reference}] ${m.application.proposal ?? "—"}`);
+    }
   }
 }
 
