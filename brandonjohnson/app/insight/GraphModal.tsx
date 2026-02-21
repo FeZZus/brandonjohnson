@@ -24,20 +24,12 @@ export default function GraphModal({ isOpen, onClose }) {
                         {activeTab === 2 && <LineGraph title={`Graph - ${tabs[activeTab]}`} />}
                     </div>
 
-                    <div className="flex gap-4 mt-auto">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors font-medium"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={onClose}
-                            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium"
-                        >
-                            Confirm
-                        </button>
-                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-1/3 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium mt-auto mx-auto"
+                    >
+                        Close
+                    </button>
                 </div>
 
                 {/* Sidebar */}
