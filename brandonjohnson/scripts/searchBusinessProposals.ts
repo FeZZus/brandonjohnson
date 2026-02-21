@@ -53,14 +53,14 @@ const EXCLUDE_KEYWORDS = [
   "temporary use", "information pod",
 ];
 
-const REQUIRE_ONE_OF = [
-  "change of use",
-  "erection of",
-  "construction of",
-  "new build",
-  "conversion of",
-  "use of",
-];
+// const REQUIRE_ONE_OF = [
+//   "change of use",
+//   "erection of",
+//   "construction of",
+//   "new build",
+//   "conversion of",
+//   "use of",
+// ];
 
 // --- Stage 2 use-type constants ---
 
@@ -139,13 +139,13 @@ function genApprovalRate(applications: Application[]) : RateGraphPoint[] {
 }
 
 
-type CategoryChartPoint = {
+type BusinessCategoryChartPoint = {
   name: string;
   value: number;
 }
 // --- Main function ---
 
-async function searchBusinessProposals(params: {
+async function searchProposals(params: {
   lng: number;
   lat: number;
   radius: number;        // metres, max 500
@@ -156,7 +156,7 @@ async function searchBusinessProposals(params: {
 }): Promise<{
   all: Application[];
   filtered: Application[];
-  useTypes: UseTypeMatch[];
+  businessCategoryChartPoints: BusinessCategoryChartPoint[];
   approvalRateResult: RateGraphPoint[];
 }> {
   const token = process.env.IBEX_API_KEY;
@@ -200,20 +200,18 @@ async function searchBusinessProposals(params: {
   }
 
   const all: Application[] = json;
-  const dropReasons: Record<string, number> = {};
   const filtered: Application[] = [];
 
   for (const app of all) {
     // Stage 1a: blocked reference suffixes
     const ref = app.planning_reference.toUpperCase();
+    // exclude blocked suffixes (e.g. telecom, advertisement) which are often noise and not new business sites
     if (BLOCKED_SUFFIXES.some((s) => ref.includes(s))) {
-      dropReasons.blocked_suffix = (dropReasons.blocked_suffix ?? 0) + 1;
       continue;
     }
 
     // Stage 1b: home improvement project type
     if (app.project_type === "home improvement") {
-      dropReasons.home_improvement = (dropReasons.home_improvement ?? 0) + 1;
       continue;
     }
 
@@ -221,15 +219,13 @@ async function searchBusinessProposals(params: {
 
     // Stage 1c: exclude keywords
     if (EXCLUDE_KEYWORDS.some((kw) => proposal.includes(kw))) {
-      dropReasons.exclude_keyword = (dropReasons.exclude_keyword ?? 0) + 1;
       continue;
     }
 
-    // Stage 1d: require at least one positive signal
-    if (!REQUIRE_ONE_OF.some((kw) => proposal.includes(kw))) {
-      dropReasons.no_positive_signal = (dropReasons.no_positive_signal ?? 0) + 1;
-      continue;
-    }
+    // // Stage 1d: require at least one positive signal
+    // if (!REQUIRE_ONE_OF.some((kw) => proposal.includes(kw))) {
+    //   continue;
+    // }
 
     filtered.push(app);
   }
@@ -255,15 +251,15 @@ async function searchBusinessProposals(params: {
   }
 
 
-  const categoryChartPoints: CategoryChartPoint[] = [];
+  const businessCategoryChartPoints: BusinessCategoryChartPoint[] = [];
   for (const [useType, matches] of Object.entries(byUseType)) {
-    categoryChartPoints.push({ name: useType, value: matches.length });
+    businessCategoryChartPoints.push({ name: useType, value: matches.length });
   }
 
   // Stage 3: date categorisation
   const approvalRateResult = genApprovalRate(all);
 
-  return { all, filtered, useTypes, approvalRateResult };
+  return { all, filtered, businessCategoryChartPoints, approvalRateResult };
 }
 
 
@@ -284,7 +280,7 @@ async function main() {
     .toISOString()
     .slice(0, 10);
 
-  const result = await searchBusinessProposals({
+  const result = await searchProposals({
     lng,
     lat,
     radius: 500,
@@ -294,24 +290,11 @@ async function main() {
 
   console.log(`Total from API:        ${result.all.length}`);
   console.log(`After stage 1 filter:  ${result.filtered.length}`);
+  console.log("business category counts:");
+  console.dir(result.businessCategoryChartPoints);
+  console.log("approval rate by year:");
+  console.dir(result.approvalRateResult);
 
-  // console.log(`\nAll stage 1 results (${result.filtered.length}):`);
-  // for (const app of result.filtered) {
-  //   console.log(`  [${app.planning_reference}] ${app.proposal ?? "—"}`);
-  // }
-
-  // Group use-type matches by category
-  const byUseType: Record<string, UseTypeMatch[]> = {};
-  for (const m of result.useTypes) {
-    (byUseType[m.useType] ??= []).push(m);
-  }
-  console.log(`\nBy use type (${result.useTypes.length} categorised):`);
-  for (const [useType, matches] of Object.entries(byUseType)) {
-    console.log(`  ${useType} (${matches.length}):`);
-    for (const m of matches) {
-      console.log(`    [${m.application.planning_reference}] ${m.application.proposal ?? "—"}`);
-    }
-  }
 }
 
 main().catch(console.error);
