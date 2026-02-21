@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
@@ -10,9 +10,37 @@ import type { RankedPostcode } from '../api/postcodes/route';
 const MARKER_COLOR = '#3B82F6'; // Blue color for all markers
 const MARKER_HOVER_COLOR = '#EF4444'; // Red color for hovered markers
 const MARKER_SIZE = 60; // Larger size for area-type visualization
+const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
+const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
+const SEARCH_MARKER_SIZE = 40; // Smaller size for search marker
 
 // Cache for marker icons
 const iconCache = new Map<string, Icon>();
+
+// Search result marker icon - smaller yellow/amber pin
+function createSearchMarkerIcon(): Icon {
+    const cacheKey = 'search';
+    
+    if (iconCache.has(cacheKey)) {
+        return iconCache.get(cacheKey)!;
+    }
+    
+    const svg = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="20" r="12" fill="${SEARCH_MARKER_COLOR}" stroke="white" stroke-width="2"/>
+        <circle cx="20" cy="20" r="4" fill="white"/>
+    </svg>`;
+    
+    const encodedSvg = encodeURIComponent(svg);
+    const icon = new Icon({
+        iconUrl: `data:image/svg+xml,${encodedSvg}`,
+        iconSize: [SEARCH_MARKER_SIZE, SEARCH_MARKER_SIZE],
+        iconAnchor: [SEARCH_MARKER_SIZE / 2, SEARCH_MARKER_SIZE / 2],
+        popupAnchor: [0, -SEARCH_MARKER_SIZE / 2],
+    });
+    
+    iconCache.set(cacheKey, icon);
+    return icon;
+}
 
 // Custom marker icon - large circle for area visualization
 function createAreaMarkerIcon(isHovered: boolean = false): Icon {
@@ -118,9 +146,10 @@ interface DynamicMapProps {
     onMarkerClick?: (postcode: RankedPostcode) => void;
     onMarkerHover?: (postcode: string | null) => void;
     mapCenter?: { lat: number; lng: number; zoom: number } | null;
+    searchMarker?: { lat: number; lng: number; radiusKm?: number } | null;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter, searchMarker }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -142,6 +171,32 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
             <MapResize />
             <MapCenter center={mapCenter} />
             {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
+            {searchMarker && typeof searchMarker.radiusKm === 'number' && searchMarker.radiusKm > 0 && (
+                <Circle
+                    center={[searchMarker.lat, searchMarker.lng]}
+                    radius={searchMarker.radiusKm * 1000}
+                    pathOptions={{
+                        color: SEARCH_CIRCLE_COLOR,
+                        weight: 2,
+                        opacity: 0.6,
+                        fillColor: SEARCH_CIRCLE_COLOR,
+                        fillOpacity: 0.1,
+                    }}
+                />
+            )}
+            {searchMarker && (
+                <Marker
+                    position={[searchMarker.lat, searchMarker.lng]}
+                    icon={createSearchMarkerIcon()}
+                >
+                    <Popup>
+                        <div className="text-center">
+                            <div className="font-semibold text-sm">Search Location</div>
+                            <div className="text-xs text-gray-600 mt-1">{searchMarker.lat.toFixed(4)}, {searchMarker.lng.toFixed(4)}</div>
+                        </div>
+                    </Popup>
+                </Marker>
+            )}
             {validPostcodes.map((pc, index) => {
                 const isHovered = hoveredPostcode === pc.postcode;
                 return (
