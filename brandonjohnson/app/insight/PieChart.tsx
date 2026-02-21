@@ -14,7 +14,7 @@ interface PieChartProps {
     title?: string;
 }
 
-const COLORS = ['#94a3b8', '#64748b', '#cbd5e1', '#475569', '#7c8fa3', '#b0bec5', '#546e7a', '#90a4ae'];
+const COLORS = ['#1f2937', '#4b5563', '#6b7280', '#9ca3af', '#374151', '#d1d5db', '#111827', '#e5e7eb'];
 
 export default function PieChartComponent({ data, title = 'Pie Chart' }: PieChartProps) {
     // Sample data if none is provided
@@ -30,7 +30,7 @@ export default function PieChartComponent({ data, title = 'Pie Chart' }: PieChar
 
     return (
         <div className="w-full h-full flex flex-col">
-            <h4 className="text-lg font-semibold text-slate-300 mb-4">{title}</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4">{title}</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                     <Pie
@@ -47,8 +47,8 @@ export default function PieChartComponent({ data, title = 'Pie Chart' }: PieChar
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
-                    <Legend wrapperStyle={{ color: '#94a3b8' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111827' }} />
+                    <Legend wrapperStyle={{ color: '#6b7280' }} />
                 </PieChart>
             </ResponsiveContainer>
         </div>

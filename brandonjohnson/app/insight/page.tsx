@@ -141,9 +141,9 @@ export default function InsightPage() {
     };
 
     return (
-        <div className="flex h-screen w-full bg-gray-100 overflow-hidden relative">
+        <div className="flex h-screen w-full bg-gray-200 overflow-hidden relative">
             {/* Floating Search Bar */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[500] bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-full max-w-xl mx-6">
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[500] bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4 w-full max-w-xl mx-6">
                 <div className="flex items-end gap-3">
                     <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
@@ -152,7 +152,7 @@ export default function InsightPage() {
                             value={location}
                             onChange={(e) => setLocation(e.target.value)}
                             placeholder="Enter location"
-                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
                         />
                     </div>
                     <div className="w-28">
@@ -162,12 +162,12 @@ export default function InsightPage() {
                             value={radius}
                             onChange={(e) => setRadius(e.target.value)}
                             placeholder="Radius"
-                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
                         />
                     </div>
                     <button
                         onClick={() => setExpandedDetails(!expandedDetails)}
-                        className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-200 transition-colors text-sm font-medium"
+                        className="bg-gray-200 text-gray-600 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors text-sm font-medium"
                     >
                         {expandedDetails ? '▼' : '▶'}
                     </button>
@@ -176,7 +176,7 @@ export default function InsightPage() {
                     <button
                         onClick={handleSearch}
                         disabled={searchingLocation}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {searchingLocation ? 'Searching...' : 'Search'}
                     </button>
@@ -185,21 +185,21 @@ export default function InsightPage() {
                     <button
                         onClick={handleFetchPostcodes}
                         disabled={loadingPostcodes}
-                        className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-200 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="bg-gray-200 text-gray-600 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Refresh ranked postcodes"
                     >
                         {loadingPostcodes ? '…' : '↻'}
                     </button>
                 </div>
                 {expandedDetails && (
-                    <div className="pt-4 mt-1 border-t border-gray-100">
+                    <div className="pt-4 mt-1 border-t border-gray-300">
                         <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows={2}
                             placeholder="Enter description"
-                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                            className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
                         />
                     </div>
                 )}
@@ -207,10 +207,10 @@ export default function InsightPage() {
 
             {/* Left Panel */}
             <div
-                className={`transition-all duration-300 ease-in-out bg-white border-r border-gray-200 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-80' : 'w-0'} overflow-hidden`}
+                className={`transition-all duration-300 ease-in-out bg-gray-100 border-r border-gray-300 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-80' : 'w-0'} overflow-hidden`}
             >
                 <div className="p-5 w-80 h-full flex flex-col overflow-y-auto">
-                    <h2 className="text-base font-semibold text-gray-900 mb-4 tracking-tight">Ranked Postcodes</h2>
+                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight">Ranked Postcodes</h2>
                     {rankedPostcodes.length === 0 ? (
                         <p className="text-sm text-gray-400">No postcodes loaded yet.</p>
                     ) : (
@@ -225,8 +225,8 @@ export default function InsightPage() {
                                         onMouseLeave={() => setHoveredPostcode(null)}
                                         className={`p-3 border rounded-lg cursor-pointer transition-all ${
                                             isHovered
-                                                ? 'border-gray-400 bg-gray-50 shadow-sm'
-                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                ? 'border-gray-500 bg-gray-200 shadow-sm'
+                                                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
                                         }`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -255,7 +255,7 @@ export default function InsightPage() {
             {/* Toggle Button */}
             <button
                 onClick={() => setLeftPanelOpen(!leftPanelOpen)}
-                className="absolute top-1/2 -translate-y-1/2 z-[1000] bg-white border border-gray-200 shadow-md rounded-r-lg p-2.5 hover:bg-gray-50 transition-all"
+                className="absolute top-1/2 -translate-y-1/2 z-[1000] bg-gray-100 border border-gray-300 shadow-md rounded-r-lg p-2.5 hover:bg-gray-200 transition-all"
                 style={{ left: leftPanelOpen ? '320px' : '0px', transition: 'left 0.3s ease-in-out' }}
             >
                 <span className="text-base font-bold text-gray-500">{leftPanelOpen ? '‹' : '›'}</span>
@@ -263,7 +263,7 @@ export default function InsightPage() {
 
             {/* Map Container */}
             <div className="flex-1 relative h-full">
-                
+
                 <DynamicMap
                     postcodes={rankedPostcodes}
                     hoveredPostcode={hoveredPostcode}
@@ -278,8 +278,8 @@ export default function InsightPage() {
                     }}
                 />
                 {loadingPostcodes && (
-                    <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-[600]">
-                        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-lg">
+                    <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
+                        <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
                             <div className="text-sm text-gray-600">Loading ranked postcodes...</div>
                         </div>
                     </div>

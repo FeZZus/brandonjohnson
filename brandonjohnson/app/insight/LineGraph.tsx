@@ -32,21 +32,21 @@ export default function LineGraph({ data, title = 'Line Graph' }: LineGraphProps
 
     return (
         <div className="w-full h-full flex flex-col">
-            <h4 className="text-lg font-semibold text-slate-300 mb-4">{title}</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4">{title}</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                    <XAxis dataKey="name" stroke="#64748b" tick={{ fill: '#94a3b8' }} />
-                    <YAxis stroke="#64748b" tick={{ fill: '#94a3b8' }} />
-                    <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
-                    <Legend wrapperStyle={{ color: '#94a3b8' }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" />
+                    <XAxis dataKey="name" stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
+                    <YAxis stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: '8px', color: '#111827' }} />
+                    <Legend wrapperStyle={{ color: '#6b7280' }} />
                     <Line
                         type="monotone"
                         dataKey="value"
-                        stroke="#94a3b8"
+                        stroke="#374151"
                         strokeWidth={2}
-                        dot={{ fill: '#94a3b8', r: 4 }}
-                        activeDot={{ r: 6, fill: '#cbd5e1' }}
+                        dot={{ fill: '#374151', r: 4 }}
+                        activeDot={{ r: 6, fill: '#111827' }}
                     />
                 </LineChart>
             </ResponsiveContainer>
