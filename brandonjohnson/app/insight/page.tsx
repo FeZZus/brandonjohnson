@@ -214,35 +214,40 @@ export default function InsightPage() {
                     {rankedPostcodes.length === 0 ? (
                         <p className="text-sm text-gray-400">No postcodes loaded yet.</p>
                     ) : (
-                        <div className="space-y-2 flex-1">
+                        <div className="space-y-4 flex-1">
                             {rankedPostcodes.map((pc, index) => {
                                 const isHovered = hoveredPostcode === pc.postcode;
                                 return (
-                                    <div
-                                        key={`${pc.postcode}-${index}`}
-                                        onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
-                                        onMouseEnter={() => setHoveredPostcode(pc.postcode)}
-                                        onMouseLeave={() => setHoveredPostcode(null)}
-                                        className={`p-3 border rounded-lg cursor-pointer transition-all ${
-                                            isHovered
-                                                ? 'border-gray-500 bg-gray-200 shadow-sm'
-                                                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div
-                                                className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0"
-                                                style={{ backgroundColor: '#6b7280' }}
-                                            >
-                                                {pc.rank}
-                                            </div>
+                                    <div key={`${pc.postcode}-${index}`} className="border border-gray-300 rounded-lg bg-white p-4 shadow-sm">
+                                        {/* Rank badge on outer box */}
+                                        <div
+                                            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 mb-3"
+                                            style={{ backgroundColor: '#6b7280' }}
+                                        >
+                                            {pc.rank}
+                                        </div>
+                                        
+                                        {/* Top tile - Postcode info */}
+                                        <div
+                                            onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
+                                            onMouseEnter={() => setHoveredPostcode(pc.postcode)}
+                                            onMouseLeave={() => setHoveredPostcode(null)}
+                                            className={`p-3 border rounded-lg cursor-pointer transition-all mb-2 ${
+                                                isHovered
+                                                    ? 'border-gray-500 bg-gray-200 shadow-sm'
+                                                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
+                                            }`}
+                                        >
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-xs text-gray-400 mb-0.5">Rank #{pc.rank}</div>
                                                 <div className="text-sm font-mono font-semibold text-gray-800 break-all">{pc.postcode}</div>
                                                 {pc.lat && pc.lng && (
-                                                    <div className="text-xs text-gray-400 mt-0.5">{pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}</div>
+                                                    <div className="text-xs text-gray-400 mt-1">{pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}</div>
                                                 )}
                                             </div>
+                                        </div>
+                                        
+                                        {/* Bottom tile - Empty for now */}
+                                        <div className="p-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all min-h-20">
                                         </div>
                                     </div>
                                 );
