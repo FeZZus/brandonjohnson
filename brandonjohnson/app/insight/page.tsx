@@ -10,7 +10,6 @@ const DynamicMap = dynamic(() => import('./DynamicMap'), {
 
 export default function InsightPage() {
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-    const [rightPanelOpen, setRightPanelOpen] = useState(true);
     const [expandedDetails, setExpandedDetails] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
@@ -23,7 +22,7 @@ export default function InsightPage() {
             setMapKey(prev => prev + 1);
         }, 300); // Match the transition duration
         return () => clearTimeout(timer);
-    }, [leftPanelOpen, rightPanelOpen]);
+    }, [leftPanelOpen]);
 
     return (
         <div className="flex h-screen w-full bg-gray-100 overflow-hidden relative">
@@ -107,26 +106,6 @@ export default function InsightPage() {
             {/* Map Container */}
             <div className="flex-1 relative h-full">
                 <DynamicMap key={mapKey} />
-            </div>
-
-            {/* Toggle Right Panel Button */}
-            <button
-                onClick={() => setRightPanelOpen(!rightPanelOpen)}
-                className="absolute right-0 top-1/2 -translate-y-1/2 z-[1000] bg-white shadow-lg rounded-l-md p-3 hover:bg-gray-100 transition-all"
-                style={{ right: rightPanelOpen ? '320px' : '0px', transition: 'right 0.3s ease-in-out' }}
-            >
-                <span className="text-lg font-bold">{rightPanelOpen ? '›' : '‹'}</span>
-            </button>
-
-            {/* Right Panel */}
-            <div
-                className={`transition-all duration-300 ease-in-out bg-white shadow-lg flex-shrink-0 ${rightPanelOpen ? 'w-80' : 'w-0'
-                    } overflow-hidden`}
-            >
-                <div className="p-6 w-80 h-full">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4">Right Panel</h2>
-                    <p className="text-gray-600">Content for the right panel goes here.</p>
-                </div>
             </div>
         </div>
     );
