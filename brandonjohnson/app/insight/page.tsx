@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import GraphModal from './GraphModal';
 
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
     ssr: false,
@@ -11,6 +12,7 @@ const DynamicMap = dynamic(() => import('./DynamicMap'), {
 export default function InsightPage() {
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
     const [expandedDetails, setExpandedDetails] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
     const [radius, setRadius] = useState('');
@@ -88,9 +90,16 @@ export default function InsightPage() {
                 className={`transition-all duration-300 ease-in-out bg-white shadow-lg flex-shrink-0 ${leftPanelOpen ? 'w-80' : 'w-0'
                     } overflow-hidden`}
             >
-                <div className="p-6 w-80 h-full">
+                <div className="p-6 w-80 h-full flex flex-col">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Left Panel</h2>
-                    <p className="text-gray-600">Content for the left panel goes here.</p>
+                    <p className="text-gray-600 mb-6">Content for the left panel goes here.</p>
+                    
+                    <button
+                        onClick={() => setModalOpen(!modalOpen)}
+                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium"
+                    >
+                        {modalOpen ? 'Close Modal' : 'Open Modal'}
+                    </button>
                 </div>
             </div>
 
@@ -107,6 +116,9 @@ export default function InsightPage() {
             <div className="flex-1 relative h-full">
                 <DynamicMap key={mapKey} />
             </div>
+
+            {/* Modal */}
+            <GraphModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
         </div>
     );
 }
