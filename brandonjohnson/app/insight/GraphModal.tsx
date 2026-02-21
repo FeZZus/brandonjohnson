@@ -26,6 +26,11 @@ interface PlanningData {
     };
 }
 
+interface SmallResidentialData {
+    meta: { acceptedSmallResidential: number; totalFetched: number };
+    acceptedByYear: { year: string; acceptedCount: number }[];
+}
+
 export default function GraphModal({ isOpen, onClose, postcode }: {
     isOpen: boolean;
     onClose: () => void;
@@ -34,6 +39,7 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
     const [activeTab, setActiveTab] = useState(0);
     const [incomeData, setIncomeData] = useState<IncomeData | null>(null);
     const [planningData, setPlanningData] = useState<PlanningData | null>(null);
+    const [smallResidentialData, setSmallResidentialData] = useState<SmallResidentialData | null>(null);
     const [loading, setLoading] = useState(false);
     const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -44,23 +50,34 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
         setFetchError(null);
         setIncomeData(null);
         setPlanningData(null);
+        setSmallResidentialData(null);
         setActiveTab(0);
+
+        const lat = postcode.lat;
+        const lng = postcode.lng;
+        const body = { lat, lng, radius: 500, yearsBack: 10 };
 
         Promise.all([
             fetch('/api/income', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lat: postcode.lat, lng: postcode.lng }),
+                body: JSON.stringify({ lat, lng }),
             }).then(r => r.json()),
             fetch('/api/planning', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lat: postcode.lat, lng: postcode.lng, radius: 500 }),
+                body: JSON.stringify({ lat, lng, radius: 500 }),
+            }).then(r => r.json()),
+            fetch('/api/planning/small-residential', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
             }).then(r => r.json()),
         ])
-            .then(([income, planning]) => {
+            .then(([income, planning, smallRes]) => {
                 if (!income.error) setIncomeData(income);
                 if (!planning.error) setPlanningData(planning);
+                if (!smallRes.error && smallRes.acceptedByYear) setSmallResidentialData(smallRes);
             })
             .catch(err => setFetchError(err.message))
             .finally(() => setLoading(false));
@@ -68,7 +85,7 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
 
     if (!isOpen) return null;
 
-    const tabs = ['Income', 'Planning', 'New Sites'];
+    const tabs = ['Small residential', 'Income', 'Planning', 'New Sites'];
 
     // Transform API data into chart-ready shape
     const incomeChartData = incomeData?.observations.map(o => ({
@@ -91,6 +108,11 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
             .sort((a, b) => b[1] - a[1])
             .map(([name, value]) => ({ name, value }));
     })();
+
+    const smallResidentialChartData = (smallResidentialData?.acceptedByYear ?? []).map(({ year, acceptedCount }) => ({
+        name: year,
+        value: acceptedCount,
+    }));
 
     const renderTabContent = () => {
         if (loading) {
@@ -121,18 +143,24 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
         }
 
         if (activeTab === 0) {
+            return smallResidentialChartData.length > 0
+                ? <LineGraph data={smallResidentialChartData} title="Accepted small residential planning applications (by decided year)" />
+                : <div className="flex items-center justify-center h-full text-sm text-gray-400">No small residential data for this postcode.</div>;
+        }
+
+        if (activeTab === 1) {
             return incomeChartData.length > 0
                 ? <LineGraph data={incomeChartData} title="Net Household Income (£)" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No income data available</div>;
         }
 
-        if (activeTab === 1) {
+        if (activeTab === 2) {
             return planningChartData.length > 0
                 ? <PieChartComponent data={planningChartData} title="Planning Applications by Business Type" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No planning data available</div>;
         }
 
-        if (activeTab === 2) {
+        if (activeTab === 3) {
             return newSitesChartData.length > 0
                 ? <PieChartComponent data={newSitesChartData} title="New Business Sites by Use Type" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No new business site data available</div>;
