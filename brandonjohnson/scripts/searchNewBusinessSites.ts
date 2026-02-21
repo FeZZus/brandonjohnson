@@ -251,15 +251,29 @@ async function searchNewBusinessSites(params: {
   return { all, filtered, chains, useTypes, dropReasons };
 }
 
-// --- Runner (edit coordinates/dates as needed) ---
+// --- Runner ---
 
 async function main() {
+  const lat = parseFloat(process.argv[2] ?? "");
+  const lng = parseFloat(process.argv[3] ?? "");
+  if (isNaN(lat) || isNaN(lng)) {
+    console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
+    console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
+    process.exit(1);
+  }
+
+  const now = new Date();
+  const dateTo = now.toISOString().slice(0, 10);
+  const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
+    .toISOString()
+    .slice(0, 10);
+
   const result = await searchNewBusinessSites({
-    lng: -0.1276,
-    lat: 51.5074,
+    lng,
+    lat,
     radius: 500,
-    dateFrom: "2015-01-01",
-    dateTo: "2025-12-31",
+    dateFrom,
+    dateTo,
   });
 
   console.log(`Total from API:        ${result.all.length}`);
