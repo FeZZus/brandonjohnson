@@ -1,3 +1,4 @@
+import { buildGrid } from "./grid";
 import "dotenv/config";
 
 const BASE_URL = "https://ibex.seractech.co.uk";
@@ -145,10 +146,9 @@ type BusinessCategoryChartPoint = {
 }
 // --- Main function ---
 
-async function searchProposals(params: {
+async function searchProposals500m(params: {
   lng: number;
   lat: number;
-  radius: number;        // metres, max 500
   dateFrom: string;      // ISO date e.g. "2015-01-01"
   dateTo: string;
   dateRangeType?: "validated" | "decided" | "any";
@@ -161,12 +161,12 @@ async function searchProposals(params: {
 }> {
   const token = process.env.IBEX_API_KEY;
   if (!token) throw new Error("IBEX_API_KEY environment variable is not set");
-
+  const RADIUS = 500; // metres
   const body = {
     input: {
       srid: 4326,
       coordinates: [params.lng, params.lat],
-      radius: params.radius,
+      radius: RADIUS,
       date_from: params.dateFrom,
       date_to: params.dateTo,
       date_range_type: params.dateRangeType ?? "any",
@@ -263,6 +263,76 @@ async function searchProposals(params: {
 }
 
 
+type CellData = {
+  lat: number;
+  lng: number;
+  size_meters: number;
+  results: Awaited<ReturnType<typeof searchProposals500m>>;
+}
+
+export async function searchProposals(params: {
+  lng: number;
+  lat: number;
+  radius: number;     // kilometres
+  dateFrom: string;      // ISO date e.g. "2015-01-01"
+  dateTo: string;
+  dateRangeType?: "validated" | "decided" | "any";
+  pageSize?: number;     // max 5000
+}): Promise<{ cellDataArray: CellData[] }> {
+  const gridResult = buildGrid({
+    lat: params.lat,
+    lng: params.lng,
+    radiusMeters: params.radius * 1000,
+  });
+
+  // const cellDataArray: CellData[] = await Promise.all(
+  //   gridResult.cells.map(async (cell) => {
+  //     const cellResults = await searchProposals500m({
+  //       lng: cell.lng,
+  //       lat: cell.lat,
+  //       dateFrom: params.dateFrom,
+  //       dateTo: params.dateTo,
+  //       dateRangeType: params.dateRangeType,
+  //       pageSize: params.pageSize,
+  //     });
+  //     return {
+  //       lat: cell.lat,
+  //       lng: cell.lng,
+  //       size_meters: gridResult.cellSizeMeters,
+  //       results: cellResults,
+  //     };
+  //   })
+  // );
+  let cellDataArray: CellData[] = [];
+  for (const cell of gridResult.cells) {
+    const cellResults = await searchProposals500m({
+      lng: cell.lng,
+      lat: cell.lat,
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
+      dateRangeType: params.dateRangeType,
+      pageSize: params.pageSize,
+    }).catch((error) => {
+      console.error(`Error fetching data for cell at lat ${cell.lat}, lng ${cell.lng}:`, error);
+    });
+    if (cellResults) {
+      cellDataArray.push({
+        lat: cell.lat,
+        lng: cell.lng,
+        size_meters: gridResult.cellSizeMeters,
+        results: cellResults,
+      });
+    }
+    else{
+      console.log(`failed to fetch all ${gridResult.cells.length} cells, stopping early to avoid hitting API rate limits`);
+      break;
+    }
+  }
+  
+  return { cellDataArray };
+}
+
+
 // --- Runner ---
 
 // async function main() {
@@ -280,20 +350,25 @@ async function searchProposals(params: {
 //     .toISOString()
 //     .slice(0, 10);
 
-//   const result = await searchProposals({
+//   const cellresults = await searchProposals({
 //     lng,
 //     lat,
-//     radius: 500,
+//     radius: 3,
 //     dateFrom,
 //     dateTo,
 //   });
 
-//   console.log(`Total from API:        ${result.all.length}`);
-//   console.log(`After stage 1 filter:  ${result.filtered.length}`);
-//   console.log("business category counts:");
-//   console.dir(result.businessCategoryChartPoints);
-//   console.log("approval rate by year:");
-//   console.dir(result.approvalRateResult);
+//   // console.log(JSON.stringify(cellresults, null, 2).length);
+
+//   for (const cellData of cellresults.cellDataArray) {
+//     console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
+//     console.log(`Total from API:        ${cellData.results.all.length}`);
+//     console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
+//     console.log("business category counts:");
+//     console.dir(cellData.results.businessCategoryChartPoints);
+//     console.log("approval rate by year:");
+//     console.dir(cellData.results.approvalRateResult);
+//   }
 
 // }
 

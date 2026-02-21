@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { analyseLocation } from "@/lib/planningApi";
+import { searchProposals } from "@/lib/searchProposals";
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +13,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await analyseLocation({ lng, lat, radius, yearsBack });
+    const now = new Date();
+    const dateTo = now.toISOString().slice(0, 10);
+    const dateFrom = new Date(now.getFullYear() - yearsBack, now.getMonth(), now.getDate())
+      .toISOString()
+      .slice(0, 10);
+    const result = await searchProposals({ lng, lat, radius, dateFrom, dateTo });
     return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
