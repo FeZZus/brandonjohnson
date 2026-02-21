@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { RankedPostcode } from '../api/postcodes/route';
-import { geocodePostcodes } from '../../lib/geocode';
+import { geocodePostcodes, geocodeLocation } from '../../lib/geocode';
 import GraphModal from './GraphModal';
 
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
@@ -24,6 +24,9 @@ export default function InsightPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
     const [hoveredPostcode, setHoveredPostcode] = useState<string | null>(null);
+    
+    const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
+    const [searchingLocation, setSearchingLocation] = useState(false);
 
     useEffect(() => {
         async function fetchRankedPostcodes() {
@@ -80,6 +83,35 @@ export default function InsightPage() {
         }
     };
 
+    // Handle location search
+    const handleSearch = async () => {
+        if (!location.trim()) {
+            setError('Please enter a location');
+            return;
+        }
+
+        setSearchingLocation(true);
+        setError(null);
+        try {
+            const result = await geocodeLocation(location);
+            if (result) {
+                setMapCenter({
+                    lat: result.lat,
+                    lng: result.lng,
+                    zoom: 13,
+                });
+                setError(null);
+            } else {
+                setError(`Location not found: ${location}`);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to search location');
+            console.error('Error searching location:', err);
+        } finally {
+            setSearchingLocation(false);
+        }
+    };
+
     return (
         <div className="flex h-screen w-full bg-gray-100 overflow-hidden relative">
             {/* Floating Search Bar */}
@@ -111,9 +143,17 @@ export default function InsightPage() {
                     >
                         {expandedDetails ? '▼' : '▶'}
                     </button>
-                    <button className="bg-gray-900 text-white px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap">
-                        Search
+
+                    {/* Search Button */}
+                    <button
+                        onClick={handleSearch}
+                        disabled={searchingLocation}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {searchingLocation ? 'Searching...' : 'Search'}
                     </button>
+
+                    {/* Refresh Postcodes Button */}
                     <button
                         onClick={handleFetchPostcodes}
                         disabled={loadingPostcodes}
@@ -197,9 +237,17 @@ export default function InsightPage() {
             <div className="flex-1 relative h-full">
                 <DynamicMap
                     postcodes={rankedPostcodes}
+                <DynamicMap
+                    postcodes={rankedPostcodes}
                     hoveredPostcode={hoveredPostcode}
-                    onMarkerClick={(postcode) => { setSelectedPostcode(postcode); setModalOpen(true); }}
-                    onMarkerHover={(postcode) => { setHoveredPostcode(postcode); }}
+                    mapCenter={mapCenter}
+                    onMarkerClick={(postcode) => {
+                        setSelectedPostcode(postcode);
+                        setModalOpen(true);
+                    }}
+                    onMarkerHover={(postcode) => {
+                        setHoveredPostcode(postcode);
+                    }}
                 />
                 {loadingPostcodes && (
                     <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-[600]">
@@ -213,27 +261,15 @@ export default function InsightPage() {
                         <div className="text-sm text-red-700">{error}</div>
                     </div>
                 )}
-                {rankedPostcodes.length > 0 && (
-                    <div className="absolute bottom-4 left-4 z-[600] bg-white border border-gray-200 rounded-lg p-3 shadow-md max-w-xs">
-                        <div className="text-xs font-semibold text-gray-700 mb-2">Ranked Postcodes</div>
-                        <div className="space-y-1">
-                            {rankedPostcodes.map((pc, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-xs">
-                                    <div
-                                        className="w-3 h-3 rounded-full flex-shrink-0"
-                                        style={{ backgroundColor: pc.rank === 1 ? '#EF4444' : pc.rank === 2 ? '#F59E0B' : pc.rank === 3 ? '#EAB308' : pc.rank === 4 ? '#3B82F6' : '#8B5CF6' }}
-                                    />
-                                    <span className="text-gray-600">#{pc.rank}: {pc.postcode}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
 
+            {/* Modal */}
             <GraphModal
                 isOpen={modalOpen}
-                onClose={() => { setModalOpen(false); setSelectedPostcode(null); }}
+                onClose={() => {
+                    setModalOpen(false);
+                    setSelectedPostcode(null);
+                }}
                 postcode={selectedPostcode}
             />
         </div>
