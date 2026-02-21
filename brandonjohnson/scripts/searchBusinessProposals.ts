@@ -29,12 +29,6 @@ type Application = {
   appeals?: Appeal[] | null;
 };
 
-type ChainMatch = {
-  application: Application;
-  category: string;
-  matchedBrand: string;
-};
-
 type UseTypeMatch = {
   application: Application;
   useType: string;
@@ -88,48 +82,62 @@ const USE_TYPES: Record<string, string[]> = {
   Beauty: ["beauty", "massage", "spa"],
 };
 
-// --- Stage 2 chain/brand constants ---
-
-const CHAINS: Record<string, string[]> = {
-  Coffee: [
-    "starbucks", "costa coffee", "caffe nero", "pret a manger", "pret ",
-    "caffè nero", "joe and the juice", "paul bakery", "boston tea party", "coffee#1",
-  ],
-  FastFood: [
-    "mcdonald", "kfc", "burger king", "subway", "five guys", "shake shack",
-    "wendy", "popeyes", "taco bell", "domino", "papa john", "pizza hut",
-    "nando", "leon ", "itsu", "wasabi", "tortilla", "chipotle",
-  ],
-  CasualDining: [
-    "wagamama", "yo! sushi", "yo sushi", "pizza express", "bella italia",
-    "zizzi", "ask italian", "prezzo", "carluccio", "frankie and benny",
-    "cote brasserie", "dishoom",
-  ],
-  Bakery: [
-    "greggs", "gail's", "paul ",
-  ],
-  Supermarket: [
-    "tesco", "sainsbury", "asda", "morrisons", "waitrose", "marks and spencer",
-    "m&s food", "lidl", "aldi", "co-op", "spar ", "budgens", "iceland foods", "whole foods",
-  ],
-  Retail: [
-    "primark", "h&m", "zara", "uniqlo", "next ", "river island", "jd sports",
-    "sports direct", "footlocker", "foot locker", "boots ", "superdrug",
-    "the body shop", "lush ", "waterstones",
-  ],
-  Gym: [
-    "pure gym", "anytime fitness", "the gym group", "david lloyd",
-    "nuffield health", "virgin active", "fitness first", "bannatyne",
-  ],
-  Hotel: [
-    "premier inn", "travelodge", "holiday inn", "ibis ", "hilton ",
-    "marriott", "novotel", "citizenm", "yotel", "hampton by hilton", "doubletree",
-  ],
+type YearStats = {
+  total: number;
+  approved: number;
+  refused: number;
+  pending: number;
+  approvalRate: number;
 };
+
+type RateGraphPoint = {
+  name: string;
+  approvalRate: number;
+};
+
+function genGraphPoints(applications: Application[]) {
+  const byYear: Record<string, YearStats> = {};
+
+  for (const app of applications) {
+    if (!app.application_date){
+      continue;
+    }
+    
+    const year = app.application_date.slice(0, 4);
+
+    if (!byYear[year]) {
+      byYear[year] = { total: 0, approved: 0, refused: 0, pending: 0, approvalRate: 0 };
+    }
+
+    const s = byYear[year];
+    s.total++;
+
+    const decision = app.normalised_decision;
+    const isPending = app.decided_date === null;
+
+    if (isPending) {
+      s.pending++;
+    } else if (decision === "Approved") {
+      s.approved++;
+    } else if (decision === "Refused") {
+      s.refused++;
+    }
+  }
+  for (const year in byYear) {
+    if (byYear[year].total > 0) {
+      byYear[year].approvalRate = byYear[year].approved / byYear[year].total * 100;
+    }
+  }
+  const graphPoints: RateGraphPoint[] = Object.entries(byYear).map(([year, stats]) => ({
+    name: year,
+    approvalRate: stats.approvalRate,
+  }));
+  return graphPoints;
+}
 
 // --- Main function ---
 
-async function searchNewBusinessSites(params: {
+async function searchBusinessProposals(params: {
   lng: number;
   lat: number;
   radius: number;        // metres, max 500
@@ -140,9 +148,8 @@ async function searchNewBusinessSites(params: {
 }): Promise<{
   all: Application[];
   filtered: Application[];
-  chains: ChainMatch[];
   useTypes: UseTypeMatch[];
-  dropReasons: Record<string, number>;
+  graphPoints: RateGraphPoint[];
 }> {
   const token = process.env.IBEX_API_KEY;
   if (!token) throw new Error("IBEX_API_KEY environment variable is not set");
@@ -219,22 +226,8 @@ async function searchNewBusinessSites(params: {
     filtered.push(app);
   }
 
-  // Stage 2: chain/brand detection
-  const chains: ChainMatch[] = [];
 
-  for (const app of filtered) {
-    const proposal = app.proposal?.toLowerCase() ?? "";
-    for (const [category, brands] of Object.entries(CHAINS)) {
-      for (const brand of brands) {
-        if (proposal.includes(brand)) {
-          chains.push({ application: app, category, matchedBrand: brand });
-          break; // one match per category per application
-        }
-      }
-    }
-  }
-
-  // Stage 2b: use-type categorisation
+  // Stage 2: use-type categorisation
   const useTypes: UseTypeMatch[] = [];
   for (const app of filtered) {
     const proposal = app.proposal?.toLowerCase() ?? "";
@@ -248,8 +241,13 @@ async function searchNewBusinessSites(params: {
     }
   }
 
-  return { all, filtered, chains, useTypes, dropReasons };
+  // Stage 3: date categorisation
+  const graphPoints = genGraphPoints(all);
+
+
+  return { all, filtered, useTypes, graphPoints };
 }
+
 
 // --- Runner ---
 
@@ -268,7 +266,7 @@ async function main() {
     .toISOString()
     .slice(0, 10);
 
-  const result = await searchNewBusinessSites({
+  const result = await searchBusinessProposals({
     lng,
     lat,
     radius: 500,
@@ -278,12 +276,11 @@ async function main() {
 
   console.log(`Total from API:        ${result.all.length}`);
   console.log(`After stage 1 filter:  ${result.filtered.length}`);
-  console.log(`Drop reasons:`, result.dropReasons);
 
-  console.log(`\nAll stage 1 results (${result.filtered.length}):`);
-  for (const app of result.filtered) {
-    console.log(`  [${app.planning_reference}] ${app.proposal ?? "—"}`);
-  }
+  // console.log(`\nAll stage 1 results (${result.filtered.length}):`);
+  // for (const app of result.filtered) {
+  //   console.log(`  [${app.planning_reference}] ${app.proposal ?? "—"}`);
+  // }
 
   // Group use-type matches by category
   const byUseType: Record<string, UseTypeMatch[]> = {};
@@ -293,21 +290,9 @@ async function main() {
   console.log(`\nBy use type (${result.useTypes.length} categorised):`);
   for (const [useType, matches] of Object.entries(byUseType)) {
     console.log(`  ${useType} (${matches.length}):`);
-    for (const m of matches) {
-      console.log(`    [${m.application.planning_reference}] ${m.application.proposal ?? "—"}`);
-    }
-  }
-
-  console.log(`\nChain/brand matches (${result.chains.length}):`);
-  for (const match of result.chains) {
-    console.log(
-      `\n  [${match.category}] "${match.matchedBrand}"`
-    );
-    console.log(`  Ref:      ${match.application.planning_reference}`);
-    console.log(`  Address:  ${match.application.raw_address ?? "—"}`);
-    console.log(`  Decision: ${match.application.normalised_decision}`);
-    console.log(`  Proposal: ${match.application.proposal}`);
-    console.log(`  URL:      ${match.application.url}`);
+    // for (const m of matches) {
+    //   console.log(`    [${m.application.planning_reference}] ${m.application.proposal ?? "—"}`);
+    // }
   }
 }
 
