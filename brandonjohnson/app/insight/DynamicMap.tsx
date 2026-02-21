@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
@@ -140,6 +140,18 @@ function MapCenter({ center }: { center: { lat: number; lng: number; zoom: numbe
     return null;
 }
 
+// Component to handle map click events
+function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
+    useMapEvents({
+        click: (e) => {
+            if (onMapClick) {
+                onMapClick(e.latlng.lat, e.latlng.lng);
+            }
+        },
+    });
+    return null;
+}
+
 interface DynamicMapProps {
     postcodes?: RankedPostcode[];
     hoveredPostcode?: string | null;
@@ -147,9 +159,10 @@ interface DynamicMapProps {
     onMarkerHover?: (postcode: string | null) => void;
     mapCenter?: { lat: number; lng: number; zoom: number } | null;
     searchMarker?: { lat: number; lng: number; radiusKm?: number } | null;
+    onMapClick?: (lat: number, lng: number) => void;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter, searchMarker }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter, searchMarker, onMapClick }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -170,6 +183,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
             />
             <MapResize />
             <MapCenter center={mapCenter} />
+            <MapEvents onMapClick={onMapClick} />
             {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
             {searchMarker && typeof searchMarker.radiusKm === 'number' && searchMarker.radiusKm > 0 && (
                 <Circle

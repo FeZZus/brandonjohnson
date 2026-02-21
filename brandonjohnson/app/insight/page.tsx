@@ -28,6 +28,19 @@ export default function InsightPage() {
     const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
     const [searchingLocation, setSearchingLocation] = useState(false);
     const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; radiusKm?: number } | null>(null);
+    
+    // Update circle when radius changes
+    useEffect(() => {
+        if (searchMarker && radius) {
+            const radiusNum = parseFloat(radius);
+            if (!isNaN(radiusNum) && radiusNum >= 0 && radiusNum <= 5) {
+                setSearchMarker({
+                    ...searchMarker,
+                    radiusKm: radiusNum,
+                });
+            }
+        }
+    }, [radius]);
 
     useEffect(() => {
         async function fetchRankedPostcodes() {
@@ -139,6 +152,27 @@ export default function InsightPage() {
         } finally {
             setSearchingLocation(false);
         }
+    };
+
+    // Handle map click
+    const handleMapClick = async (lat: number, lng: number) => {
+        // Set location as coordinates
+        setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        
+        // Set marker and circle with default radius
+        const radiusKm = parseFloat(radius);
+        setSearchMarker({
+            lat,
+            lng,
+            radiusKm: !isNaN(radiusKm) ? radiusKm : 5,
+        });
+        
+        // Center map on clicked location
+        setMapCenter({
+            lat,
+            lng,
+            zoom: 13,
+        });
     };
 
     return (
@@ -290,6 +324,7 @@ export default function InsightPage() {
                     hoveredPostcode={hoveredPostcode}
                     mapCenter={mapCenter}
                     searchMarker={searchMarker}
+                    onMapClick={handleMapClick}
                     onMarkerClick={(postcode) => {
                         setSelectedPostcode(postcode);
                         setModalOpen(true);
