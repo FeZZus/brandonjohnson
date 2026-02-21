@@ -265,36 +265,36 @@ async function searchProposals(params: {
 
 // --- Runner ---
 
-async function main() {
-  const lat = parseFloat(process.argv[2] ?? "");
-  const lng = parseFloat(process.argv[3] ?? "");
-  if (isNaN(lat) || isNaN(lng)) {
-    console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
-    console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
-    process.exit(1);
-  }
+// async function main() {
+//   const lat = parseFloat(process.argv[2] ?? "");
+//   const lng = parseFloat(process.argv[3] ?? "");
+//   if (isNaN(lat) || isNaN(lng)) {
+//     console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
+//     console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
+//     process.exit(1);
+//   }
 
-  const now = new Date();
-  const dateTo = now.toISOString().slice(0, 10);
-  const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
-    .toISOString()
-    .slice(0, 10);
+//   const now = new Date();
+//   const dateTo = now.toISOString().slice(0, 10);
+//   const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
+//     .toISOString()
+//     .slice(0, 10);
 
-  const result = await searchProposals({
-    lng,
-    lat,
-    radius: 500,
-    dateFrom,
-    dateTo,
-  });
+//   const result = await searchProposals({
+//     lng,
+//     lat,
+//     radius: 500,
+//     dateFrom,
+//     dateTo,
+//   });
 
-  console.log(`Total from API:        ${result.all.length}`);
-  console.log(`After stage 1 filter:  ${result.filtered.length}`);
-  console.log("business category counts:");
-  console.dir(result.businessCategoryChartPoints);
-  console.log("approval rate by year:");
-  console.dir(result.approvalRateResult);
+//   console.log(`Total from API:        ${result.all.length}`);
+//   console.log(`After stage 1 filter:  ${result.filtered.length}`);
+//   console.log("business category counts:");
+//   console.dir(result.businessCategoryChartPoints);
+//   console.log("approval rate by year:");
+//   console.dir(result.approvalRateResult);
 
-}
+// }
 
-main().catch(console.error);
+// main().catch(console.error);
