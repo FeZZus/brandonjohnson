@@ -151,7 +151,7 @@ export default function InsightPage() {
                     >
                         Search
                     </button>
-                    
+
                     {/* Refresh Postcodes Button */}
                     <button
                         onClick={handleFetchPostcodes}
@@ -184,7 +184,7 @@ export default function InsightPage() {
             >
                 <div className="p-6 w-80 h-full flex flex-col overflow-y-auto">
                     <h2 className="text-xl font-bold text-gray-800 mb-4">Ranked Postcodes</h2>
-                    
+
                     {rankedPostcodes.length === 0 ? (
                         <p className="text-gray-600">No postcodes loaded yet.</p>
                     ) : (
@@ -192,45 +192,44 @@ export default function InsightPage() {
                             {rankedPostcodes.map((pc, index) => {
                                 const isHovered = hoveredPostcode === pc.postcode;
                                 return (
-                                <div
-                                    key={`${pc.postcode}-${index}`}
-                                    onClick={() => {
-                                        setSelectedPostcode(pc);
-                                        setModalOpen(true);
-                                    }}
-                                    onMouseEnter={() => setHoveredPostcode(pc.postcode)}
-                                    onMouseLeave={() => setHoveredPostcode(null)}
-                                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                                        isHovered 
-                                            ? 'border-red-500 bg-red-50 shadow-md' 
-                                            : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
-                                    }`}
-                                >
-                                    <div className="flex items-start gap-3">
-                                        {/* Rank Badge */}
-                                        <div
-                                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-                                            style={{
-                                                backgroundColor: '#3B82F6', // Same blue as markers
-                                            }}
-                                        >
-                                            {pc.rank}
-                                        </div>
-                                        
-                                        {/* Postcode Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm text-gray-500 mb-1">Rank #{pc.rank}</div>
-                                            <div className="text-lg font-mono font-semibold text-gray-800 break-all">
-                                                {pc.postcode}
+                                    <div
+                                        key={`${pc.postcode}-${index}`}
+                                        onClick={() => {
+                                            setSelectedPostcode(pc);
+                                            setModalOpen(true);
+                                        }}
+                                        onMouseEnter={() => setHoveredPostcode(pc.postcode)}
+                                        onMouseLeave={() => setHoveredPostcode(null)}
+                                        className={`p-4 border rounded-lg cursor-pointer transition-all ${isHovered
+                                                ? 'border-red-500 bg-red-50 shadow-md'
+                                                : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+                                            }`}
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            {/* Rank Badge */}
+                                            <div
+                                                className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+                                                style={{
+                                                    backgroundColor: '#3B82F6', // Same blue as markers
+                                                }}
+                                            >
+                                                {pc.rank}
                                             </div>
-                                            {pc.lat && pc.lng && (
-                                                <div className="text-xs text-gray-400 mt-1">
-                                                    {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
+
+                                            {/* Postcode Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm text-gray-500 mb-1">Rank #{pc.rank}</div>
+                                                <div className="text-lg font-mono font-semibold text-gray-800 break-all">
+                                                    {pc.postcode}
                                                 </div>
-                                            )}
+                                                {pc.lat && pc.lng && (
+                                                    <div className="text-xs text-gray-400 mt-1">
+                                                        {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
                                 );
                             })}
                         </div>
@@ -249,8 +248,8 @@ export default function InsightPage() {
 
             {/* Map Container */}
             <div className="flex-1 relative h-full">
-                <DynamicMap 
-                    postcodes={rankedPostcodes} 
+                <DynamicMap
+                    postcodes={rankedPostcodes}
                     hoveredPostcode={hoveredPostcode}
                     onMarkerClick={(postcode) => {
                         setSelectedPostcode(postcode);
@@ -274,32 +273,11 @@ export default function InsightPage() {
                         <div className="text-sm text-red-800">{error}</div>
                     </div>
                 )}
-                {/* Ranked postcodes indicator */}
-                {rankedPostcodes.length > 0 && (
-                    <div className="absolute bottom-4 left-4 z-[600] bg-white rounded-lg p-3 shadow-lg max-w-xs">
-                        <div className="text-xs font-bold text-gray-800 mb-2">Ranked Postcodes</div>
-                        <div className="space-y-1">
-                            {rankedPostcodes.map((pc, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-xs">
-                                    <div
-                                        className="w-4 h-4 rounded-full"
-                                        style={{
-                                            backgroundColor: pc.rank === 1 ? '#EF4444' : pc.rank === 2 ? '#F59E0B' : pc.rank === 3 ? '#EAB308' : pc.rank === 4 ? '#3B82F6' : '#8B5CF6',
-                                        }}
-                                    />
-                                    <span className="text-gray-700">
-                                        #{pc.rank}: {pc.postcode}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Modal */}
-            <GraphModal 
-                isOpen={modalOpen} 
+            <GraphModal
+                isOpen={modalOpen}
                 onClose={() => {
                     setModalOpen(false);
                     setSelectedPostcode(null);
