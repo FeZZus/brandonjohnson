@@ -66,3 +66,43 @@ export async function geocodePostcodes(
   }
   return results;
 }
+// Geocode any location (city, address, postcode, etc.)
+export async function geocodeLocation(location: string): Promise<GeocodeResult | null> {
+  try {
+    if (!location || location.trim().length === 0) {
+      console.warn('Location string is empty');
+      return null;
+    }
+
+    // Use Nominatim API for geocoding
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1&countrycodes=gb`,
+      {
+        headers: {
+          'User-Agent': 'BrandonJohnson/1.0', // Required by Nominatim
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`Geocoding failed: ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      console.warn(`No results for location: ${location}`);
+      return null;
+    }
+
+    const result = data[0];
+    return {
+      lat: parseFloat(result.lat),
+      lng: parseFloat(result.lon),
+      display_name: result.display_name || location,
+    };
+  } catch (error) {
+    console.error(`Error geocoding location ${location}:`, error);
+    return null;
+  }
+}
