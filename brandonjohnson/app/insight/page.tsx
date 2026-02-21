@@ -22,6 +22,7 @@ export default function InsightPage() {
     const [rankedPostcodes, setRankedPostcodes] = useState<RankedPostcode[]>([]);
     const [loadingPostcodes, setLoadingPostcodes] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
 
     // Note: Removed mapKey remounting as it causes container reuse errors
     // The map will automatically adjust to container size changes
@@ -243,7 +244,14 @@ export default function InsightPage() {
             </div>
 
             {/* Modal */}
-            <GraphModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+            <GraphModal 
+                isOpen={modalOpen} 
+                onClose={() => {
+                    setModalOpen(false);
+                    setSelectedPostcode(null);
+                }}
+                postcode={selectedPostcode}
+            />
         </div>
     );
 }

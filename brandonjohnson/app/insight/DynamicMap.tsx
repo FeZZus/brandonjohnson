@@ -103,9 +103,10 @@ function MapResize() {
 
 interface DynamicMapProps {
     postcodes?: RankedPostcode[];
+    onMarkerClick?: (postcode: RankedPostcode) => void;
 }
 
-export default function DynamicMap({ postcodes = [] }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], onMarkerClick }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -131,11 +132,26 @@ export default function DynamicMap({ postcodes = [] }: DynamicMapProps) {
                     key={`${pc.postcode}-${pc.rank}-${index}`}
                     position={[pc.lat!, pc.lng!]}
                     icon={createRankedMarkerIcon(pc.rank)}
+                    eventHandlers={{
+                        click: () => {
+                            if (onMarkerClick) {
+                                onMarkerClick(pc);
+                            }
+                        },
+                    }}
                 >
                     <Popup>
                         <div className="text-center">
                             <div className="font-bold text-lg mb-1">Rank #{pc.rank}</div>
                             <div className="text-sm text-gray-600">{pc.postcode}</div>
+                            {onMarkerClick && (
+                                <button
+                                    onClick={() => onMarkerClick(pc)}
+                                    className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                                >
+                                    View Details
+                                </button>
+                            )}
                         </div>
                     </Popup>
                 </Marker>
