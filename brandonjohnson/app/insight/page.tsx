@@ -17,7 +17,7 @@ export default function InsightPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
-    const [radius, setRadius] = useState('');
+    const [radius, setRadius] = useState('5');
     const [description, setDescription] = useState('');
     const [rankedPostcodes, setRankedPostcodes] = useState<RankedPostcode[]>([]);
     const [loadingPostcodes, setLoadingPostcodes] = useState(false);
@@ -27,6 +27,7 @@ export default function InsightPage() {
     
     const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
     const [searchingLocation, setSearchingLocation] = useState(false);
+    const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; radiusKm?: number } | null>(null);
 
     useEffect(() => {
         async function fetchRankedPostcodes() {
@@ -89,16 +90,43 @@ export default function InsightPage() {
             setError('Please enter a location');
             return;
         }
+        if (!radius || parseFloat(radius) <= 0) {
+            setError('Please enter a valid radius');
+            return;
+        }
 
         setSearchingLocation(true);
         setError(null);
         try {
             const result = await geocodeLocation(location);
             if (result) {
+                // Calculate zoom level based on radius to show the whole circle taking up ~80% of screen
+                // If no radius, default to zoom 13
+                let zoomLevel = 13;
+                if (radius && parseFloat(radius) > 0) {
+                    const radiusKm = parseFloat(radius);
+                    // Simple formula: higher radius = lower zoom level (zoom out more)
+                    // Adjust the divisor to get 80% coverage
+                    if (radiusKm <= 1) zoomLevel = 15;
+                    else if (radiusKm <= 2) zoomLevel = 14;
+                    else if (radiusKm <= 5) zoomLevel = 13;
+                    else if (radiusKm <= 10) zoomLevel = 12;
+                    else if (radiusKm <= 20) zoomLevel = 11;
+                    else if (radiusKm <= 50) zoomLevel = 10;
+                    else if (radiusKm <= 100) zoomLevel = 9;
+                    else if (radiusKm <= 200) zoomLevel = 8;
+                    else zoomLevel = 7;
+                }
+                
                 setMapCenter({
                     lat: result.lat,
                     lng: result.lng,
-                    zoom: 13,
+                    zoom: zoomLevel,
+                });
+                setSearchMarker({
+                    lat: result.lat,
+                    lng: result.lng,
+                    radiusKm: radius ? parseFloat(radius) : undefined,
                 });
                 setError(null);
             } else {
@@ -240,6 +268,7 @@ export default function InsightPage() {
                     postcodes={rankedPostcodes}
                     hoveredPostcode={hoveredPostcode}
                     mapCenter={mapCenter}
+                    searchMarker={searchMarker}
                     onMarkerClick={(postcode) => {
                         setSelectedPostcode(postcode);
                         setModalOpen(true);
