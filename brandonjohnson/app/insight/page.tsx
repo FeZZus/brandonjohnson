@@ -13,7 +13,7 @@ const DynamicMap = dynamic(() => import('./DynamicMap'), {
 
 export default function InsightPage() {
     const [leftPanelOpen, setLeftPanelOpen] = useState(true);
-    const [expandedDetails, setExpandedDetails] = useState(false);
+    const [expandedDetails, setExpandedDetails] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
@@ -103,6 +103,9 @@ export default function InsightPage() {
             setError('Please enter a location');
             return;
         }
+        
+        // Collapse the details panel when searching
+        setExpandedDetails(false);
         const radiusNum = parseFloat(radius);
         if (!radius || isNaN(radiusNum) || radiusNum < 0 || radiusNum > 5) {
             setError('Radius must be between 0 and 5 km');
