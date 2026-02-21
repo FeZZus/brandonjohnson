@@ -90,8 +90,9 @@ export default function InsightPage() {
             setError('Please enter a location');
             return;
         }
-        if (!radius || parseFloat(radius) <= 0) {
-            setError('Please enter a valid radius');
+        const radiusNum = parseFloat(radius);
+        if (!radius || isNaN(radiusNum) || radiusNum < 0 || radiusNum > 5) {
+            setError('Radius must be between 0 and 5 km');
             return;
         }
 
@@ -160,8 +161,23 @@ export default function InsightPage() {
                         <input
                             type="number"
                             value={radius}
-                            onChange={(e) => setRadius(e.target.value)}
+                            onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (e.target.value === '' || (!isNaN(val) && val >= 0 && val <= 5)) {
+                                    setRadius(e.target.value);
+                                }
+                            }}
+                            onBlur={(e) => {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val)) {
+                                    if (val > 5) setRadius('5');
+                                    if (val < 0) setRadius('0');
+                                }
+                            }}
                             placeholder="Radius"
+                            min="0"
+                            max="5"
+                            step="0.1"
                             className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
                         />
                     </div>
