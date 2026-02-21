@@ -57,9 +57,16 @@ export default function InsightPage() {
                     {/* Expand Dropdown Button */}
                     <button
                         onClick={() => setExpandedDetails(!expandedDetails)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
+                        className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors font-medium text-sm flex items-center gap-2 whitespace-nowrap"
                     >
                         {expandedDetails ? '▼' : '▶'}
+                    </button>
+
+                    {/* Search Button */}
+                    <button
+                        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap"
+                    >
+                        Search
                     </button>
                 </div>
 
