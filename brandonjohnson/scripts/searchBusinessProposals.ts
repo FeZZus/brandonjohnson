@@ -95,14 +95,11 @@ type RateGraphPoint = {
   approvalRate: number;
 };
 
-type ApprovalRateResult = {
-  graphPoints: RateGraphPoint[];
-  avgApprovalRate: number;
-};
-function genApprovalRate(applications: Application[]) : ApprovalRateResult {
+
+function genApprovalRate(applications: Application[]) : RateGraphPoint[] {
   const byYear: Record<string, YearStats> = {};
-  const totalApproved = applications.filter((app) => app.normalised_decision === "Approved").length;
-  const avgApprovalRate = applications.length ? totalApproved / applications.length * 100 : 0;
+  // const totalApproved = applications.filter((app) => app.normalised_decision === "Approved").length;
+  // const avgApprovalRate = applications.length ? totalApproved / applications.length * 100 : 0;
 
   for (const app of applications) {
     if (!app.application_date){
@@ -138,7 +135,7 @@ function genApprovalRate(applications: Application[]) : ApprovalRateResult {
     name: year,
     approvalRate: stats.approvalRate,
   }));
-  return {graphPoints, avgApprovalRate};
+  return graphPoints;
 }
 
 
@@ -160,7 +157,7 @@ async function searchBusinessProposals(params: {
   all: Application[];
   filtered: Application[];
   useTypes: UseTypeMatch[];
-  approvalRateResult: ApprovalRateResult;
+  approvalRateResult: RateGraphPoint[];
 }> {
   const token = process.env.IBEX_API_KEY;
   if (!token) throw new Error("IBEX_API_KEY environment variable is not set");
