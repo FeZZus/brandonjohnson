@@ -23,6 +23,7 @@ export default function InsightPage() {
     const [loadingPostcodes, setLoadingPostcodes] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
+    const [hoveredPostcode, setHoveredPostcode] = useState<string | null>(null);
 
     // Note: Removed mapKey remounting as it causes container reuse errors
     // The map will automatically adjust to container size changes
@@ -181,16 +182,59 @@ export default function InsightPage() {
                 className={`transition-all duration-300 ease-in-out bg-white shadow-lg flex-shrink-0 ${leftPanelOpen ? 'w-80' : 'w-0'
                     } overflow-hidden`}
             >
-                <div className="p-6 w-80 h-full flex flex-col">
-                    <h2 className="text-xl font-bold text-gray-800 mb-4">Left Panel</h2>
-                    <p className="text-gray-600 mb-6">Content for the left panel goes here.</p>
-
-                    <button
-                        onClick={() => setModalOpen(!modalOpen)}
-                        className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium"
-                    >
-                        {modalOpen ? 'Close Modal' : 'Open Modal'}
-                    </button>
+                <div className="p-6 w-80 h-full flex flex-col overflow-y-auto">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4">Ranked Postcodes</h2>
+                    
+                    {rankedPostcodes.length === 0 ? (
+                        <p className="text-gray-600">No postcodes loaded yet.</p>
+                    ) : (
+                        <div className="space-y-3 flex-1">
+                            {rankedPostcodes.map((pc, index) => {
+                                const isHovered = hoveredPostcode === pc.postcode;
+                                return (
+                                <div
+                                    key={`${pc.postcode}-${index}`}
+                                    onClick={() => {
+                                        setSelectedPostcode(pc);
+                                        setModalOpen(true);
+                                    }}
+                                    onMouseEnter={() => setHoveredPostcode(pc.postcode)}
+                                    onMouseLeave={() => setHoveredPostcode(null)}
+                                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                                        isHovered 
+                                            ? 'border-red-500 bg-red-50 shadow-md' 
+                                            : 'border-gray-200 hover:border-blue-500 hover:bg-blue-50'
+                                    }`}
+                                >
+                                    <div className="flex items-start gap-3">
+                                        {/* Rank Badge */}
+                                        <div
+                                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+                                            style={{
+                                                backgroundColor: '#3B82F6', // Same blue as markers
+                                            }}
+                                        >
+                                            {pc.rank}
+                                        </div>
+                                        
+                                        {/* Postcode Info */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm text-gray-500 mb-1">Rank #{pc.rank}</div>
+                                            <div className="text-lg font-mono font-semibold text-gray-800 break-all">
+                                                {pc.postcode}
+                                            </div>
+                                            {pc.lat && pc.lng && (
+                                                <div className="text-xs text-gray-400 mt-1">
+                                                    {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -205,7 +249,17 @@ export default function InsightPage() {
 
             {/* Map Container */}
             <div className="flex-1 relative h-full">
-                <DynamicMap postcodes={rankedPostcodes} />
+                <DynamicMap 
+                    postcodes={rankedPostcodes} 
+                    hoveredPostcode={hoveredPostcode}
+                    onMarkerClick={(postcode) => {
+                        setSelectedPostcode(postcode);
+                        setModalOpen(true);
+                    }}
+                    onMarkerHover={(postcode) => {
+                        setHoveredPostcode(postcode);
+                    }}
+                />
                 {/* Loading overlay */}
                 {loadingPostcodes && (
                     <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center z-[600]">
