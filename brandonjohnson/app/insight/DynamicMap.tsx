@@ -95,13 +95,32 @@ function MapResize() {
     return null;
 }
 
+// Component to pan/zoom map to a specific center location
+function MapCenter({ center }: { center: { lat: number; lng: number; zoom: number } | null }) {
+    const map = useMap();
+    
+    useEffect(() => {
+        if (center) {
+            // Pan and zoom to the new location with smooth animation
+            map.setView([center.lat, center.lng], center.zoom, {
+                animate: true,
+                duration: 1,
+            });
+        }
+    }, [center, map]);
+    
+    return null;
+}
+
 interface DynamicMapProps {
     postcodes?: RankedPostcode[];
     hoveredPostcode?: string | null;
     onMarkerClick?: (postcode: RankedPostcode) => void;
+    onMarkerHover?: (postcode: string | null) => void;
+    mapCenter?: { lat: number; lng: number; zoom: number } | null;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -121,6 +140,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapResize />
+            <MapCenter center={mapCenter} />
             {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
             {validPostcodes.map((pc, index) => {
                 const isHovered = hoveredPostcode === pc.postcode;

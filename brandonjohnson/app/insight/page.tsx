@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { RankedPostcode } from '../../api/postcodes/route';
-import { geocodePostcodes } from '../../lib/geocode';
+import { geocodePostcodes, geocodeLocation } from '../../lib/geocode';
 import GraphModal from './GraphModal';
 
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
@@ -24,6 +24,8 @@ export default function InsightPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
     const [hoveredPostcode, setHoveredPostcode] = useState<string | null>(null);
+    const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
+    const [searchingLocation, setSearchingLocation] = useState(false);
 
     // Note: Removed mapKey remounting as it causes container reuse errors
     // The map will automatically adjust to container size changes
@@ -108,6 +110,35 @@ export default function InsightPage() {
         }
     };
 
+    // Handle location search
+    const handleSearch = async () => {
+        if (!location.trim()) {
+            setError('Please enter a location');
+            return;
+        }
+
+        setSearchingLocation(true);
+        setError(null);
+        try {
+            const result = await geocodeLocation(location);
+            if (result) {
+                setMapCenter({
+                    lat: result.lat,
+                    lng: result.lng,
+                    zoom: 13,
+                });
+                setError(null);
+            } else {
+                setError(`Location not found: ${location}`);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to search location');
+            console.error('Error searching location:', err);
+        } finally {
+            setSearchingLocation(false);
+        }
+    };
+
     return (
         <div className="flex h-screen w-full bg-gray-100 overflow-hidden relative">
             {/* Floating Location/Radius Search Bar */}
@@ -147,9 +178,11 @@ export default function InsightPage() {
 
                     {/* Search Button */}
                     <button
-                        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap"
+                        onClick={handleSearch}
+                        disabled={searchingLocation}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Search
+                        {searchingLocation ? 'Searching...' : 'Search'}
                     </button>
 
                     {/* Refresh Postcodes Button */}
@@ -251,6 +284,7 @@ export default function InsightPage() {
                 <DynamicMap
                     postcodes={rankedPostcodes}
                     hoveredPostcode={hoveredPostcode}
+                    mapCenter={mapCenter}
                     onMarkerClick={(postcode) => {
                         setSelectedPostcode(postcode);
                         setModalOpen(true);
