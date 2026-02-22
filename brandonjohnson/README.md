@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zonary
+
+A UK property and location insights tool. Search by location and radius to explore planning data, income trends, and ranked postcodes on an interactive map with heatmaps—useful for deciding where to invest or open a business.
+
+## Features
+
+- **Landing page** — Minimal intro with a single CTA to the insight flow
+- **Interactive map** — Leaflet-based map with search circle and grid overlay
+- **Heatmaps** — Recommended score, residential activity, and median income
+- **Planning insights** — Business categories, approval rates, and planning/income trends
+- **Ranked postcodes** — Postcodes ranked by suitability with justifications and address listings
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router)
+- **UI:** React 19, TypeScript
+- **Styling:** Tailwind CSS v4 (`@tailwindcss/postcss`)
+- **Fonts:** Geist (sans) and Geist Mono via `next/font/google`
+- **Map:** Leaflet + react-leaflet
+- **Charts:** Recharts
+- **APIs:** IBEX (planning/search), Google Gemini (AI), OpenStreetMap Nominatim (geocoding)
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Node.js 18+
+- npm, yarn, pnpm, or bun
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Setup
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Clone and install**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+   ```bash
+   cd brandonjohnson
+   npm install
+   ```
 
-## Learn More
+2. **Environment variables**
 
-To learn more about Next.js, take a look at the following resources:
+   Create a `.env` (or `.env.local`) in this directory with:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   ```env
+   IBEX_API_KEY=your_ibex_jwt_token
+   GEMINI_API_KEY=your_google_gemini_api_key
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+   - **IBEX_API_KEY** — JWT for the IBEX planning/search API (required for search and insights).
+   - **GEMINI_API_KEY** — Google AI (Gemini) API key used for AI-generated justifications.
 
-## Deploy on Vercel
+3. **Run the dev server**
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+   ```bash
+   npm run dev
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   Open [http://localhost:3000](http://localhost:3000). The landing page is at `/`, and the main insight experience is at `/insight`.
+
+### Scripts
+
+| Command      | Description              |
+| ------------ | ------------------------ |
+| `npm run dev`   | Start development server |
+| `npm run build` | Production build        |
+| `npm run start` | Start production server  |
+| `npm run lint`  | Run ESLint               |
+
+## Project Structure
+
+- `app/(landing)/` — Landing page and components (Hero, Features, CTA, etc.)
+- `app/insight/` — Main insight page: map, search, heatmaps, charts, postcode list
+- `app/api/` — API routes (e.g. postcodes; see `app/api/postcodes/README.md`)
+- `lib/` — Geocoding, search/proposals, and shared utilities
+
+## API: Ranked Postcodes
+
+See [app/api/postcodes/README.md](app/api/postcodes/README.md) for the ranked postcodes API (POST/GET `/api/postcodes`) and request/response formats.
+
+## Deploy
+
+You can deploy to [Vercel](https://vercel.com) or any Node-compatible host. Set `IBEX_API_KEY` and `GEMINI_API_KEY` in the environment.
+
+---
+
+Built with [Next.js](https://nextjs.org).
