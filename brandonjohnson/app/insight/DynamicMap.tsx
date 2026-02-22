@@ -206,7 +206,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                 <MapResize />
                 <MapCenter center={mapCenter} />
                 <MapEvents onMapClick={onMapClick} />
-                {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
+                {validPostcodes.length > 0 && !mapCenter && <MapBounds postcodes={postcodes} />}
 
                 {/* Grid cells for planning data */}
                 {gridCells.map((cell, index) => {
