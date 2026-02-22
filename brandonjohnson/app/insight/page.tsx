@@ -218,6 +218,10 @@ export default function InsightPage() {
             setError('Please enter a location');
             return;
         }
+        if (!description.trim()) {
+            setError('Please enter a description');
+            return;
+        }
 
         // Collapse the details panel when searching
         setExpandedDetails(false);
