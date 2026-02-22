@@ -234,6 +234,18 @@ export default function InsightPage() {
         }
     };
 
+    // Handle map click - set location from map coordinates
+    const handleMapClick = (lat: number, lng: number) => {
+        setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+        const radiusKm = parseFloat(radius);
+        setSearchMarker({
+            lat,
+            lng,
+            radiusKm: !isNaN(radiusKm) ? radiusKm : 5,
+        });
+        setMapCenter({ lat, lng, zoom: 13 });
+    };
+
     return (
         <div className="flex h-screen w-full bg-gray-200 overflow-hidden relative">
             {/* Floating Search Bar - top left, pushed right when left panel is open */}
