@@ -493,7 +493,7 @@ export default function InsightPage() {
                                                 {pc.postcode}
                                             </div>
                                             {pc.lat != null && pc.lng != null && (
-                                                <div className="text-xs text-gray-500 text-right flex-shrink-0">
+                                                <div className="text-xs text-gray-500 ml-auto text-right flex-shrink-0">
                                                     {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
                                                 </div>
                                             )}
