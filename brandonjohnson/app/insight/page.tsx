@@ -425,16 +425,12 @@ export default function InsightPage() {
     // Handle map click - set location from map coordinates
     const handleMapClick = (lat: number, lng: number) => {
         setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-        // Clear existing grid squares and selection
+        // Clear existing heatmap tiles when user clicks away,
+        // but keep current recommendations/insights/listings until a new search.
         setGridCells([]);
         setRankingScoresBySquareIndex({});
         setSelectedGridCell(null);
         setModalOpen(false);
-        setPlanningIncomeSeries([]);
-        setPostcodeJustifications({});
-        setAddressListingsByPostcode({});
-        setLoadingJustifications(false);
-        setLoadingListings(false);
 
         // Set marker and circle with default radius
         const radiusKm = parseFloat(radius);
