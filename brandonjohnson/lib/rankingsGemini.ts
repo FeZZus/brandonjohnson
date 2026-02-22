@@ -35,10 +35,7 @@ function buildPrompt(businessInfo: string, squaresString: string): string {
   return `
 You are a location analyst helping entrepreneurs find the best area to open a small business in the UK.
 
-Business proposal:
-${businessInfo}
-
-You have been given data for grid squares, each covering approximately 500m × 500m.
+You have been given data for grid squares, each covering approximately 500m x 500m.
 
 Task:
 Score each square from 0 to 100 as a location for a new small commercial business.
@@ -69,6 +66,9 @@ incomeGraphPoints
 Time series of average household income (£).
 Higher values indicate stronger local purchasing power.
 If empty, income data is unavailable — treat as uncertainty in scoring.
+
+Business proposal:
+${businessInfo}
 
 SQUARE DATA:
 ${squaresString}
