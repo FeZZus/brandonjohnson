@@ -305,6 +305,9 @@ export async function searchProposals(params: {
         dateTo: params.dateTo,
         dateRangeType: params.dateRangeType,
         pageSize: params.pageSize,
+      }).then((res) => {
+        console.log(`Successfully fetched data for cell col ${cell.col}, row ${cell.row}.`);
+        return res;
       });
       return {
         lat: cell.lat,
@@ -341,7 +344,7 @@ export async function searchProposals(params: {
   //     break;
   //   }
   // }
-  
+  console.log(`Successfully fetched data for ${cellDataArray.length} out of ${gridResult.cells.length} cells.`);
   return { cellDataArray };
 }
 
