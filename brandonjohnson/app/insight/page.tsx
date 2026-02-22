@@ -23,7 +23,7 @@ type AddressListing = {
 };
 
 const exampleAddressListingsByPostcode: Record<string, AddressListing[]> = {
-    'NW1 8QS': [
+    'WC2H 7DT': [
         {
             address: 'London NW1 8QS',
             link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGF7z5KM7tiPitaJrg_4szfGHNvTOtiCVUOhwlaGCS6O3TaN7YI3ZmKs3FKkerjdFhCYFM2dnyLmmYw5HhB535rFNu3NeeEm83ty3l7rnxxOh5sZiaKEGIrWKCSWNcKeVW2',
@@ -43,7 +43,7 @@ const exampleAddressListingsByPostcode: Record<string, AddressListing[]> = {
             link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
         },
     ],
-    'NW1 8PB': [
+    'SW1A 2EP': [
         {
             address: '137-139 Kentish Town Rd London NW1 8PB',
             link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
