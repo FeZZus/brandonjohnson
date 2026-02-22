@@ -104,11 +104,11 @@ function genApprovalRate(applications: Application[]) : RateGraphPoint[] {
   // const avgApprovalRate = applications.length ? totalApproved / applications.length * 100 : 0;
 
   for (const app of applications) {
-    if (!app.application_date){
+    if (!app.decided_date){
       continue;
     }
     
-    const year = app.application_date.slice(0, 4);
+    const year = app.decided_date.slice(0, 4);
 
     if (!byYear[year]) {
       byYear[year] = { total: 0, approved: 0, refused: 0, pending: 0, approvalRate: 0 };
@@ -344,41 +344,44 @@ export async function searchProposals(params: {
 
 // --- Runner ---
 
-// async function main() {
-//   const lat = parseFloat(process.argv[2] ?? "");
-//   const lng = parseFloat(process.argv[3] ?? "");
-//   if (isNaN(lat) || isNaN(lng)) {
-//     console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
-//     console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
-//     process.exit(1);
-//   }
+async function main() {
+  const lat = parseFloat(process.argv[2] ?? "");
+  const lng = parseFloat(process.argv[3] ?? "");
+  if (isNaN(lat) || isNaN(lng)) {
+    console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
+    console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
+    process.exit(1);
+  }
 
-//   const now = new Date();
-//   const dateTo = now.toISOString().slice(0, 10);
-//   const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
-//     .toISOString()
-//     .slice(0, 10);
+  const now = new Date();
+  const dateTo = now.toISOString().slice(0, 10);
+  const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
+    .toISOString()
+    .slice(0, 10);
 
-//   const cellresults = await searchProposals({
-//     lng,
-//     lat,
-//     radius: 1,
-//     dateFrom,
-//     dateTo,
-//   });
+  const cellresults = await searchProposals({
+    lng,
+    lat,
+    radius: 1,
+    dateFrom,
+    dateTo,
+  });
 
-//   // console.log(JSON.stringify(cellresults, null, 2).length);
+  // console.log(JSON.stringify(cellresults, null, 2).length);
 
-//   for (const cellData of cellresults.cellDataArray) {
-//     console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
-//     console.log(`Total from API:        ${cellData.results.all.length}`);
-//     console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
-//     console.log("business category counts:");
-//     console.dir(cellData.results.businessCategoryChartPoints);
-//     console.log("approval rate by year:");
-//     console.dir(cellData.results.approvalRateResult);
-//   }
+  for (const cellData of cellresults.cellDataArray) {
+    console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
+    console.log(`Total from API:        ${cellData.results.all.length}`);
+    console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
+    console.log("business category counts:");
+    console.dir(cellData.results.businessCategoryChartPoints);
+    console.log("approval rate by year:");
+    console.dir(cellData.results.approvalRateResult);
+    console.log(`new houses in period: ${cellData.results.newHousesOverPeriod}`);
+    console.log("income graph points:");
+    console.dir(cellData.results.incomeGraphPoints);
+  }
 
-// }
+}
 
-// main().catch(console.error);
+main().catch(console.error);
