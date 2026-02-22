@@ -132,7 +132,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                             type="button"
                             onClick={() => setActiveTab(index)}
                             className={`flex-1 flex items-center justify-center px-2 font-bold text-s transition-colors duration-300 cursor-pointer last:border-b-0 ${activeTab === index
-                                ? 'text-gray-700 bg-[#f3f4f6]'
+                                ? 'text-white bg-indigo-600'
                                 : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                                 }`}
                         >

@@ -408,15 +408,13 @@ export default function InsightPage() {
                         <button
                             onClick={handleSearch}
                             disabled={searchingLocation}
-                            className="bg-gray-800 text-white px-6 py-2.5 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
+                            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-500 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
                         >
                             {searchingLocation ? 'Searching...' : 'Search'}
                         </button>
                     </div>
 
-                    <div
-                        className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-                    >
+                    <div className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                         <div className="min-h-0">
                             {expandedDetails && (
                                 <div className="pt-3 border-t border-gray-300 mt-3">
@@ -461,7 +459,7 @@ export default function InsightPage() {
                                 onClick={() => setHeatmapMode(heatmapMode === mode ? null : mode)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                                     heatmapMode === mode
-                                        ? 'bg-gray-800 text-white'
+                                        ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
                             >
