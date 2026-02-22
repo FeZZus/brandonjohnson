@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@google/genai": "^1.42.0",
-    "lucide-react": "^0.462.0",
     "leaflet": "^1.9.4",
+    "lucide-react": "^0.462.0",
     "next": "16.1.6",
     "p-limit": "^7.3.0",
     "react": "19.2.3",
