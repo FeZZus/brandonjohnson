@@ -43,6 +43,7 @@ export default function LineGraph({ data, title = 'Line Graph' }: LineGraphProps
                     <Line
                         type="monotone"
                         dataKey="value"
+                        name={title}
                         stroke="#374151"
                         strokeWidth={2}
                         dot={{ fill: '#374151', r: 4 }}
