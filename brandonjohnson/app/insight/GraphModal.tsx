@@ -42,7 +42,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
 
     useEffect(() => {
         if (!isOpen) return;
-        
+
         // Handle grid cell data fetching
         if (gridCell) {
             setLoading(true);
@@ -74,7 +74,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                 .finally(() => setLoading(false));
             return;
         }
-        
+
         // Handle postcode data fetching
         if (!postcode?.lat || !postcode?.lng) return;
 
@@ -231,7 +231,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                             className={`py-3 px-2 rounded-lg font-medium text-xs text-center leading-tight break-words whitespace-normal transition-colors ${activeTab === index
                                 ? 'bg-gray-700 text-white'
                                 : 'bg-gray-300 text-gray-600 hover:bg-gray-400 hover:text-gray-800'
-                            }`}
+                                }`}
                         >
                             {tab}
                         </button>
