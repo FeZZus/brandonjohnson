@@ -17,6 +17,43 @@ type CellData = {
         approvalRateResult: { name: string; approvalRate: number }[];
     };
 };
+type AddressListing = {
+    address: string;
+    link: string;
+};
+
+const exampleAddressListingsByPostcode: Record<string, AddressListing[]> = {
+    'NW1 8QS': [
+        {
+            address: 'London NW1 8QS',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGF7z5KM7tiPitaJrg_4szfGHNvTOtiCVUOhwlaGCS6O3TaN7YI3ZmKs3FKkerjdFhCYFM2dnyLmmYw5HhB535rFNu3NeeEm83ty3l7rnxxOh5sZiaKEGIrWKCSWNcKeVW2',
+        },
+    ],
+    'WC2R 0JR': [
+        {
+            address: 'London NW1 8QS',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGF7z5KM7tiPitaJrg_4szfGHNvTOtiCVUOhwlaGCS6O3TaN7YI3ZmKs3FKkerjdFhCYFM2dnyLmmYw5HhB535rFNu3NeeEm83ty3l7rnxxOh5sZiaKEGIrWKCSWNcKeVW2',
+        },
+        {
+            address: '137-139 Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+        {
+            address: '99-99A Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+    ],
+    'NW1 8PB': [
+        {
+            address: '137-139 Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+        {
+            address: '99-99A Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+    ],
+};
 
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
     ssr: false,
@@ -400,9 +437,6 @@ export default function InsightPage() {
                                 return (
                                     <div
                                         key={`${pc.postcode}-${index}`}
-                                        onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
-                                        onMouseEnter={() => setHoveredPostcode(pc.postcode)}
-                                        onMouseLeave={() => setHoveredPostcode(null)}
                                         className={`border rounded-lg bg-white p-4 shadow-sm cursor-pointer transition-all ${isHovered
                                             ? 'border-gray-500 bg-gray-50 shadow-md'
                                             : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
@@ -417,7 +451,12 @@ export default function InsightPage() {
                                         </div>
 
                                         {/* Inner top tile: postcode info */}
-                                        <div className="p-3 border border-gray-200 rounded-lg bg-white mb-2">
+                                        <div
+                                            onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
+                                            onMouseEnter={() => setHoveredPostcode(pc.postcode)}
+                                            onMouseLeave={() => setHoveredPostcode(null)}
+                                            className="p-3 border border-gray-200 rounded-lg bg-white mb-2 cursor-pointer"
+                                        >
                                             <div className="text-sm font-mono font-semibold text-gray-800 break-all">
                                                 {pc.postcode}
                                             </div>
@@ -429,10 +468,27 @@ export default function InsightPage() {
                                         </div>
 
                                         {/* Inner bottom tile: listings/analysis placeholder */}
-                                        <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-16">
-                                            <div className="text-xs text-gray-400 italic">
-                                                Listings will appear here.
-                                            </div>
+                                        {/* Inner bottom tile: address listings */}
+                                        <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                                            {exampleAddressListingsByPostcode[pc.postcode]?.length ? (
+                                                <div className="space-y-2">
+                                                    {exampleAddressListingsByPostcode[pc.postcode].map((listing, idx) => (
+                                                        <a
+                                                            key={`${pc.postcode}-listing-${idx}`}
+                                                            href={listing.link}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="block text-xs text-gray-700 bg-white border border-gray-200 rounded-md px-2.5 py-2 hover:bg-gray-100 transition-colors"
+                                                        >
+                                                            {listing.address}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-gray-400 italic">
+                                                    No addresses available.
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
