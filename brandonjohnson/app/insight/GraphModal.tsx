@@ -31,10 +31,13 @@ interface SmallResidentialData {
     acceptedByYear: { year: string; acceptedCount: number }[];
 }
 
-export default function GraphModal({ isOpen, onClose, postcode }: {
+export default function GraphModal({ isOpen, onClose, postcode, gridCell, planningBusinessCategories = [], planningApprovalRates = [] }: {
     isOpen: boolean;
     onClose: () => void;
     postcode?: RankedPostcode | null;
+    gridCell?: any | null;
+    planningBusinessCategories?: { name: string; value: number }[];
+    planningApprovalRates?: { name: string; approvalRate: number }[];
 }) {
     const [activeTab, setActiveTab] = useState(0);
     const [incomeData, setIncomeData] = useState<IncomeData | null>(null);
@@ -44,7 +47,50 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
     const [fetchError, setFetchError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!isOpen || !postcode?.lat || !postcode?.lng) return;
+        if (!isOpen) return;
+        
+        // Handle grid cell data fetching
+        if (gridCell) {
+            setLoading(true);
+            setFetchError(null);
+            setIncomeData(null);
+            setPlanningData(null);
+            setSmallResidentialData(null);
+            setActiveTab(0);
+
+            const lat = gridCell.lat;
+            const lng = gridCell.lng;
+            const body = { lat, lng, radius: 500, yearsBack: 10 };
+
+            Promise.all([
+                fetch('/api/income', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat, lng }),
+                }).then(r => r.json()),
+                fetch('/api/planning', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat, lng, radius: 500 }),
+                }).then(r => r.json()),
+                fetch('/api/planning/small-residential', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                }).then(r => r.json()),
+            ])
+                .then(([income, planning, smallRes]) => {
+                    if (!income.error) setIncomeData(income);
+                    if (!planning.error) setPlanningData(planning);
+                    if (!smallRes.error && smallRes.acceptedByYear) setSmallResidentialData(smallRes);
+                })
+                .catch(err => setFetchError(err.message))
+                .finally(() => setLoading(false));
+            return;
+        }
+        
+        // Handle postcode data fetching
+        if (!postcode?.lat || !postcode?.lng) return;
 
         setLoading(true);
         setFetchError(null);
@@ -81,7 +127,7 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
             })
             .catch(err => setFetchError(err.message))
             .finally(() => setLoading(false));
-    }, [isOpen, postcode?.postcode]);
+    }, [isOpen, postcode?.postcode, gridCell]);
 
     if (!isOpen) return null;
 
@@ -134,10 +180,11 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
             );
         }
 
-        if (!postcode?.lat || !postcode?.lng) {
+        // If no postcode AND no gridCell, show error
+        if (!postcode?.lat && !postcode?.lng && !gridCell) {
             return (
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-sm text-gray-400">No location data for this postcode.</p>
+                    <p className="text-sm text-gray-400">No location data available.</p>
                 </div>
             );
         }
@@ -145,7 +192,7 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
         if (activeTab === 0) {
             return smallResidentialChartData.length > 0
                 ? <LineGraph data={smallResidentialChartData} title="Accepted small residential planning applications (by decided year)" />
-                : <div className="flex items-center justify-center h-full text-sm text-gray-400">No small residential data for this postcode.</div>;
+                : <div className="flex items-center justify-center h-full text-sm text-gray-400">No small residential data available.</div>;
         }
 
         if (activeTab === 1) {
@@ -155,12 +202,26 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
         }
 
         if (activeTab === 2) {
+            // Show aggregated business categories from search area if available
+            if (planningBusinessCategories.length > 0) {
+                return <PieChartComponent data={planningBusinessCategories} title="Business Categories in Search Area" />;
+            }
+            // Fall back to postcode-specific planning data
             return planningChartData.length > 0
                 ? <PieChartComponent data={planningChartData} title="Planning Applications by Business Type" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No planning data available</div>;
         }
 
         if (activeTab === 3) {
+            // Show aggregated approval rates from search area if available
+            if (planningApprovalRates.length > 0) {
+                const approvalData = planningApprovalRates.map(point => ({
+                    name: point.name,
+                    value: Math.round(point.approvalRate * 10) / 10
+                }));
+                return <LineGraph data={approvalData} title="Approval Rates by Year (Search Area)" />;
+            }
+            // Fall back to postcode-specific new sites data
             return newSitesChartData.length > 0
                 ? <PieChartComponent data={newSitesChartData} title="New Business Sites by Use Type" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No new business site data available</div>;
@@ -174,7 +235,12 @@ export default function GraphModal({ isOpen, onClose, postcode }: {
                 <div className="flex-1 p-6 flex flex-col overflow-hidden">
                     <div className="mb-4">
                         <h3 className="text-2xl font-bold text-gray-800">{tabs[activeTab]}</h3>
-                        {postcode && (
+                        {gridCell && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                Grid Cell • {gridCell.results.filtered.length} businesses
+                            </p>
+                        )}
+                        {postcode && !gridCell && (
                             <p className="text-sm text-gray-500 mt-0.5">
                                 {postcode.postcode} &mdash; Rank #{postcode.rank}
                             </p>

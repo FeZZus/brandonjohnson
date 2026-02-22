@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap, useMapEvents } from 'react-leaflet';
 import { Icon } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
@@ -13,6 +13,15 @@ const MARKER_SIZE = 60; // Larger size for area-type visualization
 const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
 const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
 const SEARCH_MARKER_SIZE = 40; // Smaller size for search marker
+
+// Helper function to get color based on business density
+function getDensityColor(count: number): string {
+    if (count === 0) return '#E5E7EB'; // Gray for empty
+    if (count <= 5) return '#86EFAC'; // Light green
+    if (count <= 10) return '#FDE047'; // Yellow
+    if (count <= 20) return '#FDBA74'; // Orange
+    return '#FCA5A5'; // Red for high density
+}
 
 // Cache for marker icons
 const iconCache = new Map<string, Icon>();
@@ -160,9 +169,20 @@ interface DynamicMapProps {
     mapCenter?: { lat: number; lng: number; zoom: number } | null;
     searchMarker?: { lat: number; lng: number; radiusKm?: number } | null;
     onMapClick?: (lat: number, lng: number) => void;
+    onGridCellClick?: (cell: any) => void;
+    gridCells?: Array<{
+        lat: number;
+        lng: number;
+        size_meters: number;
+        results: {
+            filtered: any[];
+            businessCategoryChartPoints: { name: string; value: number }[];
+            approvalRateResult: { name: string; approvalRate: number }[];
+        };
+    }>;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter, searchMarker, onMapClick }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter, searchMarker, onMapClick, onGridCellClick, gridCells = [] }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -185,6 +205,52 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
             <MapCenter center={mapCenter} />
             <MapEvents onMapClick={onMapClick} />
             {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
+            
+            {/* Grid cells for planning data */}
+            {gridCells.map((cell, index) => {
+                const count = cell.results.filtered.length;
+                const color = getDensityColor(count);
+                
+                // Calculate cell bounds from center point and size
+                // const halfSize = cell.size_meters / 2;
+                const halfSize = cell.size_meters;
+
+                // Approximate degrees per meter
+                const latDegPerM = 1 / 111000;
+                const lngDegPerM = 1 / (111000 * Math.cos((cell.lat * Math.PI) / 180));
+                
+                const bounds: [[number, number], [number, number]] = [
+                    [cell.lat - (halfSize * latDegPerM), cell.lng - (halfSize * lngDegPerM)],
+                    [cell.lat + (halfSize * latDegPerM), cell.lng + (halfSize * lngDegPerM)]
+                ];
+
+                console.log(`Cell ${index + 1}: Count=${count}, Color=${color}, Bounds=${JSON.stringify(bounds)}`);
+                
+                // Cell 1: Count=56, Color=#FCA5A5, Bounds=[[51.5029414954955,-0.1350021641361522],[51.511950504504505,-0.12052783586384777]]
+
+
+                return (
+                    <Rectangle
+                        key={`cell-${index}`}
+                        bounds={bounds}
+                        pathOptions={{
+                            color: '#4B5563',
+                            weight: 1,
+                            opacity: 0.5,
+                            fillColor: color,
+                            fillOpacity: 0.4,
+                        }}
+                        eventHandlers={{
+                            click: () => {
+                                if (onGridCellClick) {
+                                    onGridCellClick(cell);
+                                }
+                            },
+                        }}
+                    />
+                );
+            })}
+            
             {searchMarker && typeof searchMarker.radiusKm === 'number' && searchMarker.radiusKm > 0 && (
                 <Circle
                     center={[searchMarker.lat, searchMarker.lng]}

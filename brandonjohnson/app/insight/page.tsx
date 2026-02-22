@@ -6,6 +6,18 @@ import type { RankedPostcode } from '../api/postcodes/route';
 import { geocodePostcodes, geocodeLocation } from '../../lib/geocode';
 import GraphModal from './GraphModal';
 
+type CellData = {
+    lat: number;
+    lng: number;
+    size_meters: number;
+    results: {
+        all: any[];
+        filtered: any[];
+        businessCategoryChartPoints: { name: string; value: number }[];
+        approvalRateResult: { name: string; approvalRate: number }[];
+    };
+};
+
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-full text-gray-400">Loading map...</div>
@@ -28,7 +40,50 @@ export default function InsightPage() {
     const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
     const [searchingLocation, setSearchingLocation] = useState(false);
     const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; radiusKm?: number } | null>(null);
+    const [gridCells, setGridCells] = useState<CellData[]>([]);
+    const [loadingGrid, setLoadingGrid] = useState(false);
+    const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
+    const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
+    const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
     
+    // Aggregate planning data from all grid cells
+    useEffect(() => {
+        if (gridCells.length === 0) {
+            setAggregatedBusinessCategories([]);
+            setAggregatedApprovalRates([]);
+            return;
+        }
+        
+        // Aggregate business categories
+        const categoryMap = new Map<string, number>();
+        gridCells.forEach(cell => {
+            cell.results.businessCategoryChartPoints.forEach(point => {
+                categoryMap.set(point.name, (categoryMap.get(point.name) || 0) + point.value);
+            });
+        });
+        const aggregatedCategories = Array.from(categoryMap.entries())
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+        
+        // Aggregate approval rates (average by year)
+        const yearMap = new Map<string, { total: number; count: number }>();
+        gridCells.forEach(cell => {
+            cell.results.approvalRateResult.forEach(point => {
+                const existing = yearMap.get(point.name) || { total: 0, count: 0 };
+                yearMap.set(point.name, {
+                    total: existing.total + point.approvalRate,
+                    count: existing.count + 1
+                });
+            });
+        });
+        const aggregatedRates = Array.from(yearMap.entries())
+            .map(([name, data]) => ({ name, approvalRate: data.total / data.count }))
+            .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+        
+        setAggregatedBusinessCategories(aggregatedCategories);
+        setAggregatedApprovalRates(aggregatedRates);
+    }, [gridCells]);
+
     // Update circle when radius changes
     useEffect(() => {
         if (searchMarker && radius) {
@@ -146,6 +201,27 @@ export default function InsightPage() {
                     radiusKm: radius ? parseFloat(radius) : undefined,
                 });
                 setError(null);
+                
+                // Fetch planning data for grid cells
+                setLoadingGrid(true);
+                try {
+                    const planningResponse = await fetch('/api/planning', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            lng: result.lng, 
+                            lat: result.lat, 
+                            radius: radiusNum,
+                            yearsBack: 5 
+                        })
+                    });
+                    const planningData = await planningResponse.json();
+                    setGridCells(planningData.cellDataArray || []);
+                } catch (err) {
+                    console.error('Error fetching planning data:', err);
+                } finally {
+                    setLoadingGrid(false);
+                }
             } else {
                 setError(`Location not found: ${location}`);
             }
@@ -328,9 +404,14 @@ export default function InsightPage() {
                     mapCenter={mapCenter}
                     searchMarker={searchMarker}
                     onMapClick={handleMapClick}
+                    gridCells={gridCells}
+                    onGridCellClick={(cell) => {
+                        setSelectedGridCell(cell);
+                        setModalOpen(true);
+                    }}
                     onMarkerClick={(postcode) => {
                         setSelectedPostcode(postcode);
-                        setModalOpen(true);
+                        // Don't open modal for postcode clicks anymore
                     }}
                     onMarkerHover={(postcode) => {
                         setHoveredPostcode(postcode);
@@ -340,6 +421,13 @@ export default function InsightPage() {
                     <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
                         <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
                             <div className="text-sm text-gray-600">Loading ranked postcodes...</div>
+                        </div>
+                    </div>
+                )}
+                {loadingGrid && (
+                    <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
+                        <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
+                            <div className="text-sm text-gray-600">Loading planning data...</div>
                         </div>
                     </div>
                 )}
@@ -356,8 +444,12 @@ export default function InsightPage() {
                 onClose={() => {
                     setModalOpen(false);
                     setSelectedPostcode(null);
+                    setSelectedGridCell(null);
                 }}
                 postcode={selectedPostcode}
+                gridCell={selectedGridCell}
+                planningBusinessCategories={selectedGridCell?.results.businessCategoryChartPoints || aggregatedBusinessCategories}
+                planningApprovalRates={selectedGridCell?.results.approvalRateResult || aggregatedApprovalRates}
             />
         </div>
     );
