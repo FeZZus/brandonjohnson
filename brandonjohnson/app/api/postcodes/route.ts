@@ -6,6 +6,7 @@ export type RankedPostcode = {
   rank: number; // 1-5
   lat?: number; // Optional: if backend provides coordinates
   lng?: number; // Optional: if backend provides coordinates
+  score?: number; // Optional: Gemini-generated suitability score
 };
 
 // In-memory store for ranked postcodes (in production, use a database)

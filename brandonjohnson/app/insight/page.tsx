@@ -199,6 +199,7 @@ export default function InsightPage() {
         setHeatmapMode('residential');
         setPostcodeJustifications({});
         setLoadingJustifications(false);
+        setRankedPostcodes([]);
         setError(null);
         try {
             const result = await geocodeLocation(location);
@@ -306,6 +307,7 @@ export default function InsightPage() {
                                     rank: i + 1,
                                     lat: cell.lat,
                                     lng: cell.lng,
+                                    score: ranking.score,
                                 });
                                 rankedWithContext.push({
                                     postcode,
@@ -620,6 +622,14 @@ export default function InsightPage() {
                                             <div className="text-sm font-mono font-semibold text-gray-800 break-all min-w-0 flex-1">
                                                 {pc.postcode}
                                             </div>
+                                            {!loadingRankings && pc.score != null && (
+                                                <div className="px-2 py-0.5 bg-white border border-indigo-600 text-indigo-600 rounded-md text-xs font-semibold flex-shrink-0 flex items-center gap-1">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                                        <path d="M12 0l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                                                    </svg>
+                                                    {pc.score.toFixed(1)}
+                                                </div>
+                                            )}
                                             {pc.lat != null && pc.lng != null && (
                                                 <div className="text-xs text-gray-500 ml-auto text-right flex-shrink-0">
                                                     {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
