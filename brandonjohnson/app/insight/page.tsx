@@ -408,27 +408,31 @@ export default function InsightPage() {
                                             : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                                             }`}
                                     >
-                                        {/* Title row: rank + postcode left, coordinates right */}
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div
-                                                className="w-7 h-7 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0"
-                                                style={{ backgroundColor: '#6b7280' }}
-                                            >
-                                                {pc.rank}
-                                            </div>
-                                            <div className="text-sm font-mono font-semibold text-gray-800 break-all min-w-0 flex-1">
+                                        {/* Outer tile content: rank badge */}
+                                        <div
+                                            className="w-7 h-7 rounded-full flex items-center justify-center text-white font-semibold text-xs mb-3"
+                                            style={{ backgroundColor: '#6b7280' }}
+                                        >
+                                            {pc.rank}
+                                        </div>
+
+                                        {/* Inner top tile: postcode info */}
+                                        <div className="p-3 border border-gray-200 rounded-lg bg-white mb-2">
+                                            <div className="text-sm font-mono font-semibold text-gray-800 break-all">
                                                 {pc.postcode}
                                             </div>
                                             {pc.lat != null && pc.lng != null && (
-                                                <div className="text-xs text-gray-500 flex-shrink-0 text-right">
+                                                <div className="text-xs text-gray-500 mt-1">
                                                     {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Placeholder for future analysis */}
-                                        <div className="text-xs text-gray-400 italic border-t border-gray-200 pt-3 min-h-12">
-                                            Analysis will appear here.
+                                        {/* Inner bottom tile: listings/analysis placeholder */}
+                                        <div className="p-3 border border-gray-200 rounded-lg bg-gray-50 min-h-16">
+                                            <div className="text-xs text-gray-400 italic">
+                                                Listings will appear here.
+                                            </div>
                                         </div>
                                     </div>
                                 );
