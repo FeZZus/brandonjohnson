@@ -1,35 +1,34 @@
 import { GoogleGenAI } from "@google/genai";
+import { SearchProposalsResult } from "./searchProposals";
+
+type SquareResults = SearchProposalsResult["cellDataArray"][number]["results"];
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-// Need to make this print using an index!
-function makeSquaresString(testval: SearchProposalsResult): string {
-  return testval.cellDataArray.map((cell, index) => {
-    const approvalLines = cell.results.approvalRateResult
-      .map(p => `${p.name}: ${p.approvalRate.toFixed(2)}%`)
-      .join('\n');
+function makeSquareString(results: SquareResults): string {
+  const approvalLines = results.approvalRateResult
+    .map(p => `${p.name}: ${p.approvalRate.toFixed(2)}%`)
+    .join('\n');
 
-    const businessLines = cell.results.businessCategoryChartPoints
-      .map(p => `${p.name}: ${p.value}`)
-      .join('\n');
+  const businessLines = results.businessCategoryChartPoints
+    .map(p => `${p.name}: ${p.value}`)
+    .join('\n');
 
-    const incomeLines = cell.results.incomeGraphPoints.length > 0
-      ? cell.results.incomeGraphPoints.map(p => `${p.name}: £${p.value}`).join('\n')
-      : '(no data)';
+  const incomeLines = results.incomeGraphPoints.length > 0
+    ? results.incomeGraphPoints.map(p => `${p.name}: £${p.value}`).join('\n')
+    : '(no data)';
 
-    return [
-      `Square ${index + 1}`,
-      `approvalRateResult:\n${approvalLines}`,
-      `businessCategoryChartPoints:\n${businessLines}`,
-      `newHousesOverPeriod: ${cell.results.newHousesOverPeriod}`,
-      `incomeGraphPoints:\n${incomeLines}`,
-    ].join('\n\n');
-  }).join('\n\n');
+  return [
+    `approvalRateResult:\n${approvalLines}`,
+    `businessCategoryChartPoints:\n${businessLines}`,
+    `newHousesOverPeriod: ${results.newHousesOverPeriod}`,
+    `incomeGraphPoints:\n${incomeLines}`,
+  ].join('\n\n');
 }
 
-const prompt = function buildPrompt(businessInfo, squareRanking, squaresString) { // squareRanking is one entry in the json returned by the LLM in rankingsGemini
+function buildPrompt(businessInfo: string, squareRanking: { score: number }, squaresString: string): string {
   return `
 You are a location analyst helping justify the score out of 100 given to this area (for opening a small business in the UK).
 
@@ -88,18 +87,33 @@ For this square, provide:
 SQUARE DATA:
 ${squaresString}
 `;
+}
+
+const justificationSchema = {
+  type: "object",
+  properties: {
+    justification: { type: "string" },
+  },
+  required: ["justification"],
 };
 
-// Call Gemini
-const response = await ai.models.generateContent({
-  model: "gemini-2.5-flash",
-  contents: prompt,
-  config: {
-    responseMimeType: "application/json", // needs to return string !!
-  },
-});
+export async function justifySquare(
+  businessInfo: string,
+  squareData: SquareResults,
+  score: number
+): Promise<string> {
+  const squaresString = makeSquareString(squareData);
+  const prompt = buildPrompt(businessInfo, { score }, squaresString);
 
-// Convert to object
-const justification = JSON.parse(response.text);
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: justificationSchema,
+    },
+  });
 
-console.log(justification);
+  const parsed = JSON.parse(response.text!) as { justification: string };
+  return parsed.justification;
+}
