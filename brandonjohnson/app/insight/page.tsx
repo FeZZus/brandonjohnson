@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { RankedPostcode } from '../api/postcodes/route';
 import { geocodePostcodes, geocodeLocation } from '../../lib/geocode';
@@ -74,6 +74,22 @@ export default function InsightPage() {
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
     const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
     const [planningIncomeSeries, setPlanningIncomeSeries] = useState<{ name: string; value: number }[]>([]);
+    const [hoveredGridCellKey, setHoveredGridCellKey] = useState<string | null>(null);
+
+    const tileRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    const makeCellKey = (lat?: number, lng?: number) => {
+        if (lat == null || lng == null) return null;
+        return `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    };
+
+    useEffect(() => {
+        if (!hoveredGridCellKey) return;
+        const el = tileRefs.current[hoveredGridCellKey];
+        if (el) {
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    }, [hoveredGridCellKey]);
     type HeatmapMode = 'recommended' | 'residential' | 'income' | null;
     const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>(null);
 
@@ -401,15 +417,13 @@ export default function InsightPage() {
                         <button
                             onClick={handleSearch}
                             disabled={searchingLocation}
-                            className="bg-gray-800 text-white px-6 py-2.5 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
+                            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-500 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
                         >
                             {searchingLocation ? 'Searching...' : 'Search'}
                         </button>
                     </div>
 
-                    <div
-                        className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-                    >
+                    <div className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                         <div className="min-h-0">
                             {expandedDetails && (
                                 <div className="pt-3 border-t border-gray-300 mt-3">
@@ -454,7 +468,7 @@ export default function InsightPage() {
                                 onClick={() => setHeatmapMode(heatmapMode === mode ? null : mode)}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                                     heatmapMode === mode
-                                        ? 'bg-gray-800 text-white'
+                                        ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
                             >
@@ -476,20 +490,32 @@ export default function InsightPage() {
                     ) : (
                         <div className="space-y-4 flex-1 min-h-0">
                             {rankedPostcodes.map((pc, index) => {
-                                const isHovered = hoveredPostcode === pc.postcode;
+                                const cellKey = makeCellKey(pc.lat, pc.lng);
+                                const isHovered = hoveredPostcode === pc.postcode || (cellKey != null && cellKey === hoveredGridCellKey);
                                 return (
                                     <div
                                         key={`${pc.postcode}-${index}`}
+                                        ref={(el) => {
+                                            if (cellKey) {
+                                                tileRefs.current[cellKey] = el;
+                                            }
+                                        }}
+                                        onMouseEnter={() => {
+                                            setHoveredPostcode(pc.postcode);
+                                            setHoveredGridCellKey(cellKey);
+                                        }}
+                                        onMouseLeave={() => {
+                                            setHoveredPostcode(null);
+                                            setHoveredGridCellKey(null);
+                                        }}
                                         className={`border rounded-lg bg-white p-4 shadow-sm cursor-pointer transition-all ${isHovered
-                                            ? 'border-gray-500 bg-gray-50 shadow-md'
-                                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                                            ? 'border-gray-700 bg-gray-50 shadow-lg ring-2 ring-gray-400/60'
+                                            : 'border-gray-300 hover:border-gray-500 hover:bg-gray-50'
                                             }`}
                                     >
                                         {/* Card title row: rank + postcode + coordinates */}
                                         <div
                                             onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
-                                            onMouseEnter={() => setHoveredPostcode(pc.postcode)}
-                                            onMouseLeave={() => setHoveredPostcode(null)}
                                             className="flex items-center gap-3 mb-2 cursor-pointer"
                                         >
                                             <div
@@ -584,6 +610,8 @@ export default function InsightPage() {
                     onMapClick={handleMapClick}
                     gridCells={gridCells}
                     heatmapMode={heatmapMode}
+                    hoveredGridCellKey={hoveredGridCellKey}
+                    onGridCellHover={(key) => setHoveredGridCellKey(key)}
                     onGridCellClick={(cell) => {
                         setSelectedGridCell(cell);
                         setModalOpen(true);
