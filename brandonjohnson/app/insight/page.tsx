@@ -15,6 +15,7 @@ type CellData = {
         filtered: any[];
         businessCategoryChartPoints: { name: string; value: number }[];
         approvalRateResult: { name: string; approvalRate: number }[];
+        incomeGraphPoints?: { name: string; value: number }[];
     };
 };
 type AddressListing = {
@@ -83,6 +84,8 @@ export default function InsightPage() {
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
     const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
     const [planningIncomeSeries, setPlanningIncomeSeries] = useState<{ name: string; value: number }[]>([]);
+    type HeatmapMode = 'recommended' | 'residential' | 'income' | null;
+    const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>(null);
 
     // Aggregate planning data from all grid cells
     useEffect(() => {
@@ -233,6 +236,7 @@ export default function InsightPage() {
                     });
                     const planningData = await planningResponse.json();
                     const cells: CellData[] = planningData.cellDataArray || [];
+                
                     setGridCells(cells);
 
                     // Derive hottest postcodes from grid: score by activity + approval, then reverse geocode
@@ -344,12 +348,12 @@ export default function InsightPage() {
             `}} />
             {/* Floating Search Bar - top left, pushed right when left panel is open */}
             <div
-                className={`absolute top-5 z-[500] w-full max-w-xl transition-[left] duration-300 ease-in-out pb-3 font-sans antialiased ${leftPanelOpen ? 'left-[25rem]' : 'left-5'}`}
+                className={`absolute top-5 z-[500] w-full max-w-xl transition-[left] duration-300 ease-in-out pb-3 font-sans antialiased ${leftPanelOpen ? 'left-[29rem]' : 'left-5'}`}
             >
                 <div className="relative bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4">
                     <div className="flex items-end gap-3">
                         <div className="flex-1">
-                            <label className="block text-xs font-medium text-gray-500 mb-1.5 tracking-tight">Location</label>
+                            <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Location</label>
                             <input
                                 type="text"
                                 value={location}
@@ -359,7 +363,7 @@ export default function InsightPage() {
                             />
                         </div>
                         <div className="w-28">
-                            <label className="block text-xs font-medium text-gray-500 mb-1.5 tracking-tight">Radius (km)</label>
+                            <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Radius (km)</label>
                             <input
                                 type="number"
                                 value={radius}
@@ -398,7 +402,7 @@ export default function InsightPage() {
                         <div className="min-h-0">
                             {expandedDetails && (
                                 <div className="pt-3 border-t border-gray-300 mt-3">
-                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 tracking-tight">Tell me about your use case</label>
+                                    <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Tell me about your use case</label>
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
@@ -422,12 +426,40 @@ export default function InsightPage() {
                 </button>
             </div>
 
+            {/* Bottom-left toggles - only after user has searched */}
+            {searchMarker != null && (
+                <div
+                    className={`absolute bottom-5 z-[500] transition-[left] duration-300 ease-in-out ${leftPanelOpen ? 'left-[29rem]' : 'left-5'}`}
+                >
+                    <div className="flex flex-col gap-2 bg-gray-100 border border-gray-300 rounded-xl shadow-md p-2">
+                        {[
+                            { label: 'Recommended', mode: 'recommended' as const },
+                            { label: 'Residential', mode: 'residential' as const },
+                            { label: 'Income', mode: 'income' as const },
+                        ].map(({ label, mode }) => (
+                            <button
+                                key={mode}
+                                type="button"
+                                onClick={() => setHeatmapMode(heatmapMode === mode ? null : mode)}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                                    heatmapMode === mode
+                                        ? 'bg-gray-800 text-white'
+                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {/* Left Panel */}
             <div
-                className={`transition-all left-panel-scroll duration-300 ease-in-out bg-gray-100 border-r border-gray-300 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-96' : 'w-0'} overflow-hidden`}
+                className={`transition-all left-panel-scroll duration-300 ease-in-out bg-gray-100 border-r border-gray-300 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-[28rem]' : 'w-0'} overflow-hidden`}
             >
-                <div className="left-panel-scroll p-5 w-96 h-full flex flex-col overflow-y-auto min-h-0">
-                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight">Recent Growth</h2>
+                <div className="left-panel-scroll p-5 w-[28rem] h-full flex flex-col overflow-y-auto min-h-0">
+                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight">Recommendations</h2>
                     {rankedPostcodes.length === 0 ? (
                         <p className="text-sm text-gray-400">No postcodes loaded yet.</p>
                     ) : (
@@ -442,32 +474,42 @@ export default function InsightPage() {
                                             : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                                             }`}
                                     >
-                                        {/* Outer tile content: rank badge */}
-                                        <div
-                                            className="w-7 h-7 rounded-full flex items-center justify-center text-white font-semibold text-xs mb-3"
-                                            style={{ backgroundColor: '#6b7280' }}
-                                        >
-                                            {pc.rank}
-                                        </div>
-
-                                        {/* Inner top tile: postcode info */}
+                                        {/* Card title row: rank + postcode + coordinates */}
                                         <div
                                             onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
                                             onMouseEnter={() => setHoveredPostcode(pc.postcode)}
                                             onMouseLeave={() => setHoveredPostcode(null)}
-                                            className="p-3 border border-gray-200 rounded-lg bg-white mb-2 cursor-pointer"
+                                            className="flex items-center gap-3 mb-2 cursor-pointer"
                                         >
-                                            <div className="text-sm font-mono font-semibold text-gray-800 break-all">
+                                            <div
+                                                className="w-7 h-7 rounded-full flex items-center justify-center text-white font-semibold text-xs flex-shrink-0"
+                                                style={{ backgroundColor: '#6b7280' }}
+                                            >
+                                                {pc.rank}
+                                            </div>
+                                            <div className="text-sm font-mono font-semibold text-gray-800 break-all min-w-0 flex-1">
                                                 {pc.postcode}
                                             </div>
                                             {pc.lat != null && pc.lng != null && (
-                                                <div className="text-xs text-gray-500 mt-1">
+                                                <div className="text-xs text-gray-500 ml-auto text-right flex-shrink-0">
                                                     {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Inner bottom tile: listings/analysis placeholder */}
+                                        {/* Why invest: 2–3 lines of insight (placeholder for now) */}
+                                        <div className="p-3 mb-2">
+                                            <p className="text-xs text-gray-700 leading-relaxed">
+                                                Strong planning approval rates and rising commercial demand in this area.
+                                            </p>
+                                            <p className="text-xs text-gray-700 leading-relaxed mt-1">
+                                                Above-average income growth and good transport links support long-term value.
+                                            </p>
+                                            <p className="text-xs text-gray-700 leading-relaxed mt-1">
+                                                Placeholder: replace with generated insight per postcode.
+                                            </p>
+                                        </div>
+
                                         {/* Inner bottom tile: address listings */}
                                         <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
                                             {exampleAddressListingsByPostcode[pc.postcode]?.length ? (
@@ -502,7 +544,7 @@ export default function InsightPage() {
             <button
                 onClick={() => setLeftPanelOpen(!leftPanelOpen)}
                 className="absolute top-1/2 -translate-y-1/2 z-[1000] bg-gray-100 border border-gray-300 shadow-md rounded-r-lg p-2.5 hover:bg-gray-200 transition-all"
-                style={{ left: leftPanelOpen ? '384px' : '0px', transition: 'left 0.3s ease-in-out' }}
+                style={{ left: leftPanelOpen ? '28rem' : '0px', transition: 'left 0.3s ease-in-out' }}
             >
                 <span className="text-base font-bold text-gray-500">{leftPanelOpen ? '‹' : '›'}</span>
             </button>
@@ -517,6 +559,7 @@ export default function InsightPage() {
                     searchMarker={searchMarker}
                     onMapClick={handleMapClick}
                     gridCells={gridCells}
+                    heatmapMode={heatmapMode}
                     onGridCellClick={(cell) => {
                         setSelectedGridCell(cell);
                         setModalOpen(true);

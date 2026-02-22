@@ -12,7 +12,7 @@ export default function SearchPage() {
 
                 <div className="space-y-4">
                     <div>
-                        <label htmlFor="location" className="mb-2 block text-sm font-medium text-gray-500">
+                        <label htmlFor="location" className="mb-2 block text-sm font-medium text-gray ">
                             Location
                         </label>
                         <input
@@ -47,7 +47,7 @@ export default function SearchPage() {
                         />
                     </div>
 
-                    <button className="w-full rounded-lg bg-gray-800 px-4 py-2 text-white font-medium hover:bg-gray-700 transition-colors">
+                    <button className="w-full rounded-lg bg-gray-800 px-4 py-2 text-white font-medium hover:bg-gray-700 transition-colors cursor-pointer">
                         Search
                     </button>
                 </div>

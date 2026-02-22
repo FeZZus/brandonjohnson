@@ -87,12 +87,12 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-2000">
             <div className="bg-gray-100 border border-gray-300 rounded-xl shadow-2xl w-225 h-150 flex overflow-hidden">
                 {/* Main Content */}
-                <div className="flex-1 p-6 flex flex-col overflow-hidden">
+                <div className="flex-1 p-6 flex flex-col overflow-hidden relative">
                     <div className="mb-4">
                         <h3 className="text-2xl font-bold text-gray-800">{tabs[activeTab]}</h3>
                         {gridCell && (
                             <p className="text-sm text-gray-500 mt-0.5">
-                                Grid Cell • {gridCell.results.filtered.length} businesses
+                                In this location | {gridCell.results.filtered.length} businesses
                             </p>
                         )}
                         {postcode && !gridCell && (
@@ -106,26 +106,39 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                         {renderTabContent()}
                     </div>
 
+                    <div className="mt-4 pt-4 pb-4 text-center">
+                        <p className="text-s text-gray-700 leading-relaxed max-w-md mx-auto">
+                            {activeTab === 0 && 'Placeholder: analysis of business activity mix and what it means for this area will appear here.'}
+                            {activeTab === 1 && 'Placeholder: income trend summary and implications for investment will appear here.'}
+                            {activeTab === 2 && 'Placeholder: approval rate analysis and outlook will appear here.'}
+                        </p>
+                    </div>
+
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="w-1/3 bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition-colors font-medium mt-4 mx-auto border border-gray-400"
+                        className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors cursor-pointer"
+                        aria-label="Close"
                     >
-                        Close
+                        <span className="text-3xl font-bold leading-none select-none" aria-hidden>×</span>
                     </button>
                 </div>
 
-                {/* Sidebar */}
-                <div className="w-28 bg-gray-200 border-l border-gray-300 flex flex-col gap-2 p-4">
+                {/* Sidebar - 3 equal sections */}
+                <div className="w-16 bg-gray-200 flex flex-col h-full">
                     {tabs.map((tab, index) => (
                         <button
                             key={index}
+                            type="button"
                             onClick={() => setActiveTab(index)}
-                            className={`py-3 px-2 rounded-lg font-medium text-xs text-center leading-tight wrap-break-word whitespace-normal transition-colors ${activeTab === index
-                                ? 'bg-gray-700 text-white'
-                                : 'bg-gray-300 text-gray-600 hover:bg-gray-400 hover:text-gray-800'
+                            className={`flex-1 flex items-center justify-center px-2 font-bold text-s transition-colors duration-300 cursor-pointer last:border-b-0 ${activeTab === index
+                                ? 'text-gray-700 bg-[#f3f4f6]'
+                                : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                                 }`}
                         >
-                            {tab}
+                            <span className="inline-block whitespace-nowrap rotate-[90deg]">
+                                {tab}
+                            </span>
                         </button>
                     ))}
                 </div>
