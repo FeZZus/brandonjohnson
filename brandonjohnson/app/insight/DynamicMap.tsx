@@ -6,10 +6,6 @@ import { Icon, DomEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
 
-// Uniform marker style - all same color and size, larger for area visualization
-const MARKER_COLOR = '#3B82F6'; // Blue color for all markers
-const MARKER_HOVER_COLOR = '#EF4444'; // Red color for hovered markers
-const MARKER_SIZE = 60; // Larger size for area-type visualization
 const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
 const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
 const SEARCH_MARKER_SIZE = 40; // Smaller size for search marker
@@ -47,39 +43,6 @@ function createSearchMarkerIcon(): Icon {
         popupAnchor: [0, -SEARCH_MARKER_SIZE / 2],
     });
 
-    iconCache.set(cacheKey, icon);
-    return icon;
-}
-
-// Custom marker icon - large circle for area visualization
-function createAreaMarkerIcon(isHovered: boolean = false): Icon {
-    const cacheKey = isHovered ? 'hovered' : 'normal';
-
-    // Return cached icon if available
-    if (iconCache.has(cacheKey)) {
-        return iconCache.get(cacheKey)!;
-    }
-
-    const size = MARKER_SIZE;
-    const color = isHovered ? MARKER_HOVER_COLOR : MARKER_COLOR;
-    const strokeWidth = isHovered ? 5 : 3; // Thicker stroke when hovered
-    const opacity = isHovered ? 0.6 : 0.4; // More opaque when hovered
-
-    // Create a large semi-transparent circle to represent an area
-    const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="${color}" fill-opacity="${opacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
-        <circle cx="${size / 2}" cy="${size / 2}" r="6" fill="${color}" stroke="white" stroke-width="2"/>
-    </svg>`;
-    // Use URL encoding instead of base64 for better compatibility
-    const encodedSvg = encodeURIComponent(svg);
-    const icon = new Icon({
-        iconUrl: `data:image/svg+xml,${encodedSvg}`,
-        iconSize: [size, size],
-        iconAnchor: [size / 2, size / 2],
-        popupAnchor: [0, -size / 2],
-    });
-
-    // Cache the icon
     iconCache.set(cacheKey, icon);
     return icon;
 }
@@ -317,48 +280,6 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                         </Popup>
                     </Marker>
                 )}
-                {validPostcodes.map((pc, index) => {
-                    const isHovered = hoveredPostcode === pc.postcode;
-                    return (
-                        <Marker
-                            key={`${pc.postcode}-${pc.rank}-${index}`}
-                            position={[pc.lat!, pc.lng!]}
-                            icon={createAreaMarkerIcon(isHovered)}
-                            eventHandlers={{
-                                click: () => {
-                                    if (onMarkerClick) {
-                                        onMarkerClick(pc);
-                                    }
-                                },
-                                mouseover: () => {
-                                    if (onMarkerHover) {
-                                        onMarkerHover(pc.postcode);
-                                    }
-                                },
-                                mouseout: () => {
-                                    if (onMarkerHover) {
-                                        onMarkerHover(null);
-                                    }
-                                },
-                            }}
-                        >
-                            <Popup>
-                                <div className="text-center">
-                                    <div className="font-bold text-lg mb-1">Rank #{pc.rank}</div>
-                                    <div className="text-sm text-gray-600">{pc.postcode}</div>
-                                    {onMarkerClick && (
-                                        <button
-                                            onClick={() => onMarkerClick(pc)}
-                                            className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
-                                        >
-                                            View Details
-                                        </button>
-                                    )}
-                                </div>
-                            </Popup>
-                        </Marker>
-                    );
-                })}
                 <CustomZoomControl />
             </MapContainer>
         </div>
