@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap, useM
 import { Icon, DomEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
+import { SearchProposalsResult } from "@/lib/searchProposals";
 
 const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
 const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
@@ -158,30 +159,8 @@ interface DynamicMapProps {
     mapCenter?: { lat: number; lng: number; zoom: number } | null;
     searchMarker?: { lat: number; lng: number; radiusKm?: number } | null;
     onMapClick?: (lat: number, lng: number) => void;
-    onGridCellClick?: (cell: {
-        lat: number;
-        lng: number;
-        size_meters: number;
-        results: {
-            all: unknown[];
-            filtered: unknown[];
-            businessCategoryChartPoints: { name: string; value: number }[];
-            approvalRateResult: { name: string; approvalRate: number }[];
-            incomeGraphPoints?: { name: string; value: number }[];
-        };
-    }) => void;
-    gridCells?: Array<{
-        lat: number;
-        lng: number;
-        size_meters: number;
-        results: {
-            all: unknown[];
-            filtered: unknown[];
-            businessCategoryChartPoints: { name: string; value: number }[];
-            approvalRateResult: { name: string; approvalRate: number }[];
-            incomeGraphPoints?: { name: string; value: number }[];
-        };
-    }>;
+    onGridCellClick?: (cell: SearchProposalsResult['cellDataArray'][number]) => void;
+    gridCells?: SearchProposalsResult['cellDataArray'];
     heatmapMode?: 'recommended' | 'residential' | 'income' | null;
 }
 
@@ -198,7 +177,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
         const values: number[] = [];
 
         if (mode === 'residential') {
-            gridCells.forEach((cell) => values.push(cell.results.filtered.length));
+            gridCells.forEach((cell) => values.push(cell.results.newHousesOverPeriod));
         } else if (mode === 'recommended') {
             gridCells.forEach((cell) => {
                 const activity = cell.results.filtered.length;

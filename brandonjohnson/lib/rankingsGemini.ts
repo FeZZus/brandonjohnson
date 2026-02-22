@@ -81,7 +81,7 @@ const rankingSchema = {
     type: "object",
     properties: {
       squareIndex: { type: "number", description: "1-based index matching the Square number in the data" },
-      score: { type: "number", description: "Location score 0–100, where 100 is ideal" },
+      score: { type: "number", description: "Location score 0-100, where 100 is ideal" },
     },
     required: ["squareIndex", "score"],
   },
