@@ -18,18 +18,6 @@ type CellData = {
     };
 };
 
-type CellData = {
-    lat: number;
-    lng: number;
-    size_meters: number;
-    results: {
-        all: any[];
-        filtered: any[];
-        businessCategoryChartPoints: { name: string; value: number }[];
-        approvalRateResult: { name: string; approvalRate: number }[];
-    };
-};
-
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-full text-gray-400">Loading map...</div>
@@ -138,32 +126,6 @@ export default function InsightPage() {
         // fetchRankedPostcodes();
     }, []);
 
-    const handleFetchPostcodes = async () => {
-        setLoadingPostcodes(true);
-        setError(null);
-        try {
-            const response = await fetch('/api/postcodes', { method: 'GET' });
-            const data = await response.json();
-            let postcodes: RankedPostcode[] = data.postcodes || [];
-            const needsGeocoding = postcodes.filter(pc => !pc.lat || !pc.lng);
-            if (needsGeocoding.length > 0) {
-                const geocodeResults = await geocodePostcodes(needsGeocoding.map(pc => pc.postcode));
-                postcodes = postcodes.map(pc => {
-                    const geocoded = geocodeResults.get(pc.postcode);
-                    if (geocoded && (!pc.lat || !pc.lng)) {
-                        return { ...pc, lat: pc.lat || geocoded.lat, lng: pc.lng || geocoded.lng };
-                    }
-                    return pc;
-                });
-            }
-            setRankedPostcodes(postcodes);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load ranked postcodes');
-        } finally {
-            setLoadingPostcodes(false);
-        }
-    };
-
     // Handle location search
     const handleSearch = async () => {
         setLeftPanelOpen(true); // Open left panel when user clicks Search
@@ -229,7 +191,48 @@ export default function InsightPage() {
                         })
                     });
                     const planningData = await planningResponse.json();
-                    setGridCells(planningData.cellDataArray || []);
+                    const cells: CellData[] = planningData.cellDataArray || [];
+                    setGridCells(cells);
+
+                    // Derive hottest postcodes from grid: score by activity + approval, then reverse geocode
+                    if (cells.length > 0) {
+                        setLoadingPostcodes(true);
+                        try {
+                            const scored = cells.map((cell) => {
+                                const activity = cell.results?.filtered?.length ?? 0;
+                                const approvalResult = cell.results?.approvalRateResult ?? [];
+                                const avgApproval = approvalResult.length
+                                    ? approvalResult.reduce((s: number, p: { approvalRate: number }) => s + p.approvalRate, 0) / approvalResult.length
+                                    : 0;
+                                const score = activity * 10 + avgApproval;
+                                return { cell, score };
+                            });
+                            scored.sort((a, b) => b.score - a.score);
+                            const topN = scored.slice(0, 10);
+
+                            const ranked: RankedPostcode[] = [];
+                            for (let i = 0; i < topN.length; i++) {
+                                const { cell } = topN[i];
+                                const rev = await fetch('/api/geocode/reverse', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ lat: cell.lat, lng: cell.lng }),
+                                }).then((r) => r.json());
+                                const postcode = rev?.postcode ?? `${cell.lat.toFixed(4)}, ${cell.lng.toFixed(4)}`;
+                                ranked.push({
+                                    postcode,
+                                    rank: i + 1,
+                                    lat: cell.lat,
+                                    lng: cell.lng,
+                                });
+                            }
+                            setRankedPostcodes(ranked);
+                        } catch (err) {
+                            console.error('Error resolving hottest postcodes:', err);
+                        } finally {
+                            setLoadingPostcodes(false);
+                        }
+                    }
                 } catch (err) {
                     console.error('Error fetching planning data:', err);
                 } finally {
@@ -328,15 +331,6 @@ export default function InsightPage() {
                         {searchingLocation ? 'Searching...' : 'Search'}
                     </button>
 
-                    {/* Refresh Postcodes Button */}
-                    <button
-                        onClick={handleFetchPostcodes}
-                        disabled={loadingPostcodes}
-                        className="bg-gray-200 text-gray-600 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Refresh ranked postcodes"
-                    >
-                        {loadingPostcodes ? '…' : '↻'}
-                    </button>
                 </div>
                 {expandedDetails && (
                     <div className="pt-4 mt-1 border-t border-gray-300">

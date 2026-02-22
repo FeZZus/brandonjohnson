@@ -219,8 +219,6 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
             />
             <MapResize />
             <MapCenter center={mapCenter} />
-            {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
-            
             {/* Grid cells for planning data */}
             {gridCells.map((cell, index) => {
                 const count = cell.results.filtered.length;
@@ -293,48 +291,6 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                     </Popup>
                 </Marker>
             )}
-            {validPostcodes.map((pc, index) => {
-                const isHovered = hoveredPostcode === pc.postcode;
-                return (
-                    <Marker
-                        key={`${pc.postcode}-${pc.rank}-${index}`}
-                        position={[pc.lat!, pc.lng!]}
-                        icon={createAreaMarkerIcon(isHovered)}
-                        eventHandlers={{
-                            click: () => {
-                                if (onMarkerClick) {
-                                    onMarkerClick(pc);
-                                }
-                            },
-                            mouseover: () => {
-                                if (onMarkerHover) {
-                                    onMarkerHover(pc.postcode);
-                                }
-                            },
-                            mouseout: () => {
-                                if (onMarkerHover) {
-                                    onMarkerHover(null);
-                                }
-                            },
-                        }}
-                    >
-                        <Popup>
-                            <div className="text-center">
-                                <div className="font-bold text-lg mb-1">Rank #{pc.rank}</div>
-                                <div className="text-sm text-gray-600">{pc.postcode}</div>
-                                {onMarkerClick && (
-                                    <button
-                                        onClick={() => onMarkerClick(pc)}
-                                        className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
-                                    >
-                                        View Details
-                                    </button>
-                                )}
-                            </div>
-                        </Popup>
-                    </Marker>
-                );
-            })}
         <CustomZoomControl />
             </MapContainer>
         </div>
