@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap } from 'react-leaflet';
 import { Icon, DomEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
@@ -132,6 +132,32 @@ function MapResize() {
     return null;
 }
 
+// Custom zoom control - styled to match the app (replaces Leaflet's default)
+function CustomZoomControl() {
+    const map = useMap();
+    return (
+        <div className="absolute top-4 right-4 z-[1000] flex flex-col rounded-lg border border-gray-300 bg-gray-100 shadow-md overflow-hidden">
+            <button
+                type="button"
+                onClick={() => map.zoomIn()}
+                className="flex items-center justify-center w-10 h-10 text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors text-lg font-light leading-none"
+                aria-label="Zoom in"
+            >
+                +
+            </button>
+            <span className="h-px bg-gray-300" aria-hidden />
+            <button
+                type="button"
+                onClick={() => map.zoomOut()}
+                className="flex items-center justify-center w-10 h-10 text-gray-700 hover:bg-gray-200 active:bg-gray-300 transition-colors text-lg font-light leading-none"
+                aria-label="Zoom out"
+            >
+                −
+            </button>
+        </div>
+    );
+}
+
 // Component to pan/zoom map to a specific center location
 function MapCenter({ center }: { center: { lat: number; lng: number; zoom: number } | null }) {
     const map = useMap();
@@ -146,18 +172,6 @@ function MapCenter({ center }: { center: { lat: number; lng: number; zoom: numbe
         }
     }, [center, map]);
     
-    return null;
-}
-
-// Component to handle map click events
-function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
-    useMapEvents({
-        click: (e) => {
-            if (onMapClick) {
-                onMapClick(e.latlng.lat, e.latlng.lng);
-            }
-        },
-    });
     return null;
 }
 
@@ -190,20 +204,21 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
     );
 
     return (
-        <MapContainer
-            center={defaultCenter}
-            zoom={validPostcodes.length > 0 ? undefined : 12}
-            style={{ width: '100%', height: '100%' }}
-            className="z-0"
-            scrollWheelZoom={true}
-        >
-            <TileLayer
+        <div className="relative w-full h-full">
+            <MapContainer
+                center={defaultCenter}
+                zoom={validPostcodes.length > 0 ? undefined : 12}
+                style={{ width: '100%', height: '100%' }}
+                className="z-0"
+                scrollWheelZoom={true}
+                zoomControl={false}
+            >
+                <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <MapResize />
             <MapCenter center={mapCenter} />
-            <MapEvents onMapClick={onMapClick} />
             {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
             
             {/* Grid cells for planning data */}
@@ -320,6 +335,8 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                     </Marker>
                 );
             })}
-        </MapContainer>
+        <CustomZoomControl />
+            </MapContainer>
+        </div>
     );
 }

@@ -18,13 +18,25 @@ type CellData = {
     };
 };
 
+type CellData = {
+    lat: number;
+    lng: number;
+    size_meters: number;
+    results: {
+        all: any[];
+        filtered: any[];
+        businessCategoryChartPoints: { name: string; value: number }[];
+        approvalRateResult: { name: string; approvalRate: number }[];
+    };
+};
+
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-full text-gray-400">Loading map...</div>
 });
 
 export default function InsightPage() {
-    const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+    const [leftPanelOpen, setLeftPanelOpen] = useState(false);
     const [expandedDetails, setExpandedDetails] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
@@ -154,6 +166,7 @@ export default function InsightPage() {
 
     // Handle location search
     const handleSearch = async () => {
+        setLeftPanelOpen(true); // Open left panel when user clicks Search
         if (!location.trim()) {
             setError('Please enter a location');
             return;
@@ -233,9 +246,8 @@ export default function InsightPage() {
         }
     };
 
-    // Handle map click
-    const handleMapClick = async (lat: number, lng: number) => {
-        // Set location as coordinates
+    // Handle map click - set location from map coordinates
+    const handleMapClick = (lat: number, lng: number) => {
         setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         // Clear existing grid squares and selection
         setGridCells([]);
@@ -260,8 +272,10 @@ export default function InsightPage() {
 
     return (
         <div className="flex h-screen w-full bg-gray-200 overflow-hidden relative">
-            {/* Floating Search Bar */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[500] bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4 w-full max-w-xl mx-6">
+            {/* Floating Search Bar - top left, pushed right when left panel is open */}
+            <div
+                className={`absolute top-5 z-[500] bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4 w-full max-w-xl transition-[left] duration-300 ease-in-out ${leftPanelOpen ? 'left-[21rem]' : 'left-5'}`}
+            >
                 <div className="flex items-end gap-3">
                     <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
