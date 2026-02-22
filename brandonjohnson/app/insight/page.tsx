@@ -10,40 +10,7 @@ import {SearchProposalsResult} from "@/lib/searchProposals";
 type CellData = SearchProposalsResult['cellDataArray'][number];
 type AddressListing = {
     address: string;
-    link: string;
-};
-
-const exampleAddressListingsByPostcode: Record<string, AddressListing[]> = {
-    'WC2H 7DT': [
-        {
-            address: 'London NW1 8QS',
-            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGF7z5KM7tiPitaJrg_4szfGHNvTOtiCVUOhwlaGCS6O3TaN7YI3ZmKs3FKkerjdFhCYFM2dnyLmmYw5HhB535rFNu3NeeEm83ty3l7rnxxOh5sZiaKEGIrWKCSWNcKeVW2',
-        },
-    ],
-    'WC2R 0JR': [
-        {
-            address: 'London NW1 8QS',
-            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGF7z5KM7tiPitaJrg_4szfGHNvTOtiCVUOhwlaGCS6O3TaN7YI3ZmKs3FKkerjdFhCYFM2dnyLmmYw5HhB535rFNu3NeeEm83ty3l7rnxxOh5sZiaKEGIrWKCSWNcKeVW2',
-        },
-        {
-            address: '137-139 Kentish Town Rd London NW1 8PB',
-            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
-        },
-        {
-            address: '99-99A Kentish Town Rd London NW1 8PB',
-            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
-        },
-    ],
-    'SW1A 2EP': [
-        {
-            address: '137-139 Kentish Town Rd London NW1 8PB',
-            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
-        },
-        {
-            address: '99-99A Kentish Town Rd London NW1 8PB',
-            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
-        },
-    ],
+    link?: string;
 };
 
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
@@ -72,7 +39,10 @@ export default function InsightPage() {
     const [gridCells, setGridCells] = useState<CellData[]>([]);
     const [loadingGrid, setLoadingGrid] = useState(false);
     const [loadingJustifications, setLoadingJustifications] = useState(false);
+    const [loadingListings, setLoadingListings] = useState(false);
+    const [rankingScoresBySquareIndex, setRankingScoresBySquareIndex] = useState<Record<number, number>>({});
     const [postcodeJustifications, setPostcodeJustifications] = useState<Record<number, string>>({});
+    const [addressListingsByPostcode, setAddressListingsByPostcode] = useState<Record<string, AddressListing[]>>({});
     const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
     const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
@@ -197,9 +167,11 @@ export default function InsightPage() {
 
         setSearchingLocation(true);
         setHeatmapMode('residential');
+        setRankingScoresBySquareIndex({});
         setPostcodeJustifications({});
+        setAddressListingsByPostcode({});
         setLoadingJustifications(false);
-        setRankedPostcodes([]);
+        setLoadingListings(false);
         setError(null);
         try {
             const result = await geocodeLocation(location);
@@ -274,6 +246,19 @@ export default function InsightPage() {
                             const rankingsPayload = await rankingsResponse.json();
                             const rankings = Array.isArray(rankingsPayload?.rankings) ? rankingsPayload.rankings : [];
 
+                            const allScoresByIndex = rankings.reduce((acc: Record<number, number>, item: { squareIndex?: number; score?: number }) => {
+                                if (
+                                    typeof item?.squareIndex === 'number' &&
+                                    item.squareIndex >= 1 &&
+                                    item.squareIndex <= cells.length &&
+                                    typeof item?.score === 'number'
+                                ) {
+                                    acc[item.squareIndex] = item.score;
+                                }
+                                return acc;
+                            }, {});
+                            setRankingScoresBySquareIndex(allScoresByIndex);
+
                             const topRankings = rankings
                                 .filter((item: { squareIndex?: number; score?: number }) =>
                                     typeof item?.squareIndex === 'number' &&
@@ -327,43 +312,96 @@ export default function InsightPage() {
 
                             if (rankedWithContext.length > 0) {
                                 setLoadingJustifications(true);
-                                const justificationEntries = await Promise.all(
+                                setLoadingListings(true);
+                                const insightsAndListings = await Promise.all(
                                     rankedWithContext.map(async (item) => {
-                                        try {
-                                            const response = await fetch('/api/justification', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({
-                                                    businessInfo: description,
-                                                    squareData: item.squareData,
-                                                    score: item.score,
-                                                }),
-                                            });
+                                        const [justification, listings] = await Promise.all([
+                                            (async () => {
+                                                try {
+                                                    const response = await fetch('/api/justification', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            businessInfo: description,
+                                                            squareData: item.squareData,
+                                                            score: item.score,
+                                                        }),
+                                                    });
 
-                                            if (!response.ok) {
-                                                return [item.rank, 'Insight unavailable for this recommendation right now.'] as const;
-                                            }
+                                                    if (!response.ok) {
+                                                        return 'Insight unavailable for this recommendation right now.';
+                                                    }
 
-                                            const payload = await response.json();
-                                            const justification = typeof payload?.justification === 'string'
-                                                ? payload.justification
-                                                : 'Insight unavailable for this recommendation right now.';
+                                                    const payload = await response.json();
+                                                    return typeof payload?.justification === 'string'
+                                                        ? payload.justification
+                                                        : 'Insight unavailable for this recommendation right now.';
+                                                } catch {
+                                                    return 'Insight unavailable for this recommendation right now.';
+                                                }
+                                            })(),
+                                            (async () => {
+                                                try {
+                                                    const response = await fetch('/api/listings', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            business_idea: description,
+                                                            postcode: item.postcode,
+                                                        }),
+                                                    });
 
-                                            return [item.rank, justification] as const;
-                                        } catch {
-                                            return [item.rank, 'Insight unavailable for this recommendation right now.'] as const;
-                                        }
+                                                    if (!response.ok) {
+                                                        return [] as AddressListing[];
+                                                    }
+
+                                                    const payload = await response.json();
+                                                    const nestedListings = Array.isArray(payload?.listings)
+                                                        ? payload.listings
+                                                        : [];
+                                                    const rawListings = Array.isArray(nestedListings[0])
+                                                        ? nestedListings[0]
+                                                        : nestedListings;
+
+                                                    return rawListings.filter((listing: unknown): listing is AddressListing => {
+                                                        if (!listing || typeof listing !== 'object') return false;
+                                                        const candidate = listing as { address?: unknown; link?: unknown };
+                                                        return (
+                                                            typeof candidate.address === 'string' &&
+                                                            (candidate.link == null || typeof candidate.link === 'string')
+                                                        );
+                                                    });
+                                                } catch {
+                                                    return [] as AddressListing[];
+                                                }
+                                            })(),
+                                        ]);
+
+                                        return {
+                                            rank: item.rank,
+                                            postcode: item.postcode,
+                                            justification,
+                                            listings,
+                                        };
                                     })
                                 );
 
-                                setPostcodeJustifications(Object.fromEntries(justificationEntries));
+                                setPostcodeJustifications(
+                                    Object.fromEntries(insightsAndListings.map((item) => [item.rank, item.justification]))
+                                );
+                                setAddressListingsByPostcode(
+                                    Object.fromEntries(insightsAndListings.map((item) => [item.postcode, item.listings]))
+                                );
                                 setLoadingJustifications(false);
+                                setLoadingListings(false);
                             }
                         } catch (err) {
                             console.error('Error resolving hottest postcodes:', err);
                             setLoadingJustifications(false);
+                            setLoadingListings(false);
                         } finally {
                             setLoadingRankings(false);
+                            setLoadingListings(false);
                         }
                     }
                     setLeftPanelOpen(true);
@@ -389,11 +427,14 @@ export default function InsightPage() {
         setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         // Clear existing grid squares and selection
         setGridCells([]);
+        setRankingScoresBySquareIndex({});
         setSelectedGridCell(null);
         setModalOpen(false);
         setPlanningIncomeSeries([]);
         setPostcodeJustifications({});
+        setAddressListingsByPostcode({});
         setLoadingJustifications(false);
+        setLoadingListings(false);
 
         // Set marker and circle with default radius
         const radiusKm = parseFloat(radius);
@@ -666,19 +707,37 @@ export default function InsightPage() {
 
                                         {/* Inner bottom tile: address listings */}
                                         <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
-                                            {exampleAddressListingsByPostcode[pc.postcode]?.length ? (
+                                            {loadingListings && !addressListingsByPostcode[pc.postcode] ? (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                                    Loading addresses...
+                                                </div>
+                                            ) : addressListingsByPostcode[pc.postcode]?.length ? (
                                                 <div className="space-y-2">
-                                                    {exampleAddressListingsByPostcode[pc.postcode].map((listing, idx) => (
-                                                        <a
-                                                            key={`${pc.postcode}-listing-${idx}`}
-                                                            href={listing.link}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="block text-xs text-gray-700 bg-white border border-gray-200 rounded-md px-2.5 py-2 hover:bg-gray-100 transition-colors"
-                                                        >
-                                                            {listing.address}
-                                                        </a>
-                                                    ))}
+                                                    {addressListingsByPostcode[pc.postcode].map((listing, idx) => {
+                                                        if (listing.link) {
+                                                            return (
+                                                                <a
+                                                                    key={`${pc.postcode}-listing-${idx}`}
+                                                                    href={listing.link}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className="block text-xs text-gray-700 bg-white border border-gray-200 rounded-md px-2.5 py-2 hover:bg-gray-100 transition-colors"
+                                                                >
+                                                                    {listing.address}
+                                                                </a>
+                                                            );
+                                                        }
+
+                                                        return (
+                                                            <div
+                                                                key={`${pc.postcode}-listing-${idx}`}
+                                                                className="block text-xs text-gray-700 bg-white border border-gray-200 rounded-md px-2.5 py-2"
+                                                            >
+                                                                {listing.address}
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
                                             ) : (
                                                 <div className="text-xs text-gray-400 italic">
@@ -714,6 +773,7 @@ export default function InsightPage() {
                     onMapClick={handleMapClick}
                     gridCells={gridCells}
                     heatmapMode={heatmapMode}
+                    rankingScoresBySquareIndex={rankingScoresBySquareIndex}
                     hoveredGridCellKey={hoveredGridCellKey}
                     onGridCellHover={(key) => setHoveredGridCellKey(key)}
                     onGridCellClick={(cell) => {
@@ -739,7 +799,7 @@ export default function InsightPage() {
                         setHoveredPostcode(postcode);
                     }}
                 />
-                {(loadingRankings || loadingGrid || loadingJustifications) && (
+                {(loadingRankings || loadingGrid || loadingJustifications || loadingListings) && (
                     <div className="absolute top-4 right-4 z-[600] pointer-events-none flex flex-col gap-2">
                         {loadingRankings && (
                             <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
@@ -757,6 +817,12 @@ export default function InsightPage() {
                             <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
                                 <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
                                 Loading insights...
+                            </div>
+                        )}
+                        {loadingListings && (
+                            <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                Loading addresses...
                             </div>
                         )}
                     </div>

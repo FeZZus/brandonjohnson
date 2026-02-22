@@ -1,0 +1,53 @@
+/* ============================================================
+   app/style.css
+   Landing-page fonts and design tokens.
+   Imported by app/(landing)/layout.tsx only — never by globals.css.
+   Can be imported later by insight page for DM Sans/DM Mono fonts.
+   ============================================================ */
+
+/* Fonts loaded via Google Fonts <link> in app/layout.tsx.
+   Available: DM Sans, DM Mono, Lora, Volkhov */
+
+/* All variables scoped to .landing-page so they never leak to /insight */
+.landing-page {
+  --background: 210 20% 98%;
+  --foreground: 215 25% 17%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 215 25% 17%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 215 25% 17%;
+
+  --primary: 215 25% 17%;
+  --primary-foreground: 210 20% 98%;
+
+  --secondary: 210 14% 93%;
+  --secondary-foreground: 215 25% 17%;
+
+  --muted: 210 14% 95%;
+  --muted-foreground: 215 12% 52%;
+
+  --accent: 178 45% 40%;
+  --accent-foreground: 0 0% 100%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214 18% 89%;
+  --input: 214 18% 89%;
+  --ring: 178 45% 40%;
+
+  --radius: 0.5rem;
+
+  --signal-up: 160 50% 42%;
+  --signal-stable: 210 14% 58%;
+  --signal-amber: 36 80% 52%;
+
+  /* Override Tailwind font tokens — fonts loaded via Google Fonts link in root layout */
+  --font-sans: "DM Sans", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  background-color: hsl(210 20% 98%);
+  color: hsl(215 25% 17%);
+}
