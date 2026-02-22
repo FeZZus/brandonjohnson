@@ -585,7 +585,7 @@ export default function InsightPage() {
                                 disabled={mode === 'recommended' && loadingRankings}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                                     heatmapMode === mode
-                                        ? 'bg-indigo-600 text-white'
+                                        ? 'bg-[#389491] text-white'
                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 } ${mode === 'recommended' && loadingRankings ? 'opacity-80 cursor-not-allowed' : ''}`}
                             >
@@ -660,7 +660,7 @@ export default function InsightPage() {
                                                 {pc.postcode}
                                             </div>
                                             {!loadingRankings && pc.score != null && (
-                                                <div className="px-2 py-0.5 bg-white border border-indigo-600 text-indigo-600 rounded-md text-xs font-semibold flex-shrink-0 flex items-center gap-1">
+                                                <div className="px-2 py-0.5 bg-white border border-[#389491] text-[#389491] rounded-md text-xs font-semibold flex-shrink-0 flex items-center gap-1">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
                                                         <path d="M12 0l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
                                                     </svg>

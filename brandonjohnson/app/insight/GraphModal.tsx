@@ -95,7 +95,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                             <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
                                 <span>{postcode.postcode}</span>
                                 {postcode.score != null && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-indigo-600 text-indigo-600 rounded-md text-xs font-semibold">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-[#389491] text-[#389491] rounded-md text-xs font-semibold">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M12 0l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
                                         </svg>
@@ -109,7 +109,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                             <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
                                 <span>{postcode.postcode}</span>
                                 {postcode.score != null && (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-indigo-600 text-indigo-600 rounded-md text-xs font-semibold">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-[#389491] text-[#389491] rounded-md text-xs font-semibold">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
                                             <path d="M12 0l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
                                         </svg>
@@ -165,7 +165,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                             type="button"
                             onClick={() => setActiveTab(index)}
                             className={`flex-1 flex items-center justify-center px-2 font-bold text-s transition-colors duration-300 cursor-pointer last:border-b-0 ${activeTab === index
-                                ? 'text-white bg-indigo-600'
+                                ? 'text-white bg-[#389491]'
                                 : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                                 }`}
                         >
