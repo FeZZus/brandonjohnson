@@ -60,7 +60,7 @@ export default function InsightPage() {
     const [radius, setRadius] = useState('5');
     const [description, setDescription] = useState('');
     const [rankedPostcodes, setRankedPostcodes] = useState<RankedPostcode[]>([]);
-    const [loadingPostcodes, setLoadingPostcodes] = useState(false);
+    const [loadingRankings, setLoadingRankings] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
     const [hoveredPostcode, setHoveredPostcode] = useState<string | null>(null);
@@ -70,6 +70,8 @@ export default function InsightPage() {
     const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; radiusKm?: number } | null>(null);
     const [gridCells, setGridCells] = useState<CellData[]>([]);
     const [loadingGrid, setLoadingGrid] = useState(false);
+    const [loadingJustifications, setLoadingJustifications] = useState(false);
+    const [postcodeJustifications, setPostcodeJustifications] = useState<Record<number, string>>({});
     const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
     const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
@@ -90,8 +92,8 @@ export default function InsightPage() {
             el.scrollIntoView({ block: 'center', behavior: 'smooth' });
         }
     }, [hoveredGridCellKey]);
-    type HeatmapMode = 'recommended' | 'residential' | 'income' | null;
-    const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>(null);
+    type HeatmapMode = 'recommended' | 'residential' | 'income';
+    const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>('residential');
 
     // Aggregate planning data from all grid cells
     useEffect(() => {
@@ -146,7 +148,7 @@ export default function InsightPage() {
 
     useEffect(() => {
         async function fetchRankedPostcodes() {
-            setLoadingPostcodes(true);
+            setLoadingRankings(true);
             setError(null);
             try {
                 const response = await fetch('/api/postcodes', { method: 'GET' });
@@ -167,7 +169,7 @@ export default function InsightPage() {
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load ranked postcodes');
             } finally {
-                setLoadingPostcodes(false);
+                setLoadingRankings(false);
             }
         }
         // fetchRankedPostcodes();
@@ -193,6 +195,9 @@ export default function InsightPage() {
         }
 
         setSearchingLocation(true);
+        setHeatmapMode('residential');
+        setPostcodeJustifications({});
+        setLoadingJustifications(false);
         setError(null);
         try {
             const result = await geocodeLocation(location);
@@ -244,10 +249,12 @@ export default function InsightPage() {
                     const cells: CellData[] = planningData.cellDataArray || [];
                 
                     setGridCells(cells);
+                    setPlanningIncomeSeries(planningData.income || []);
+                    setLoadingGrid(false);
 
                     // Derive hottest postcodes from grid using rankSquares via API, then reverse geocode
                     if (cells.length > 0) {
-                        setLoadingPostcodes(true);
+                        setLoadingRankings(true);
                         try {
                             const rankingsResponse = await fetch('/api/rankings', {
                                 method: 'POST',
@@ -276,6 +283,14 @@ export default function InsightPage() {
                                 .slice(0, 10);
 
                             const ranked: RankedPostcode[] = [];
+                            const rankedWithContext: Array<{
+                                postcode: string;
+                                rank: number;
+                                lat: number;
+                                lng: number;
+                                score: number;
+                                squareData: CellData['results'];
+                            }> = [];
                             for (let i = 0; i < topRankings.length; i++) {
                                 const ranking = topRankings[i];
                                 const cell = cells[ranking.squareIndex - 1];
@@ -291,25 +306,67 @@ export default function InsightPage() {
                                     lat: cell.lat,
                                     lng: cell.lng,
                                 });
+                                rankedWithContext.push({
+                                    postcode,
+                                    rank: i + 1,
+                                    lat: cell.lat,
+                                    lng: cell.lng,
+                                    score: ranking.score,
+                                    squareData: cell.results,
+                                });
                             }
                             console.log('default postcodes:');
                             console.dir(cells);
                             console.log('Ranked postcodes:');
                             console.dir(ranked);
                             setRankedPostcodes(ranked);
+
+                            if (rankedWithContext.length > 0) {
+                                setLoadingJustifications(true);
+                                const justificationEntries = await Promise.all(
+                                    rankedWithContext.map(async (item) => {
+                                        try {
+                                            const response = await fetch('/api/justification', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    businessInfo: description,
+                                                    squareData: item.squareData,
+                                                    score: item.score,
+                                                }),
+                                            });
+
+                                            if (!response.ok) {
+                                                return [item.rank, 'Insight unavailable for this recommendation right now.'] as const;
+                                            }
+
+                                            const payload = await response.json();
+                                            const justification = typeof payload?.justification === 'string'
+                                                ? payload.justification
+                                                : 'Insight unavailable for this recommendation right now.';
+
+                                            return [item.rank, justification] as const;
+                                        } catch {
+                                            return [item.rank, 'Insight unavailable for this recommendation right now.'] as const;
+                                        }
+                                    })
+                                );
+
+                                setPostcodeJustifications(Object.fromEntries(justificationEntries));
+                                setLoadingJustifications(false);
+                            }
                         } catch (err) {
                             console.error('Error resolving hottest postcodes:', err);
+                            setLoadingJustifications(false);
                         } finally {
-                            setLoadingPostcodes(false);
+                            setLoadingRankings(false);
                         }
                     }
-                    setPlanningIncomeSeries(planningData.income || []);
                     setLeftPanelOpen(true);
                     // Hide the radius circle after search (keep the pin)
                     setSearchMarker(prev => prev ? { lat: prev.lat, lng: prev.lng } : null);
                 } catch (err) {
                     console.error('Error fetching planning data:', err);
-                } finally {
                     setLoadingGrid(false);
                 }
             } else {
@@ -331,6 +388,8 @@ export default function InsightPage() {
         setSelectedGridCell(null);
         setModalOpen(false);
         setPlanningIncomeSeries([]);
+        setPostcodeJustifications({});
+        setLoadingJustifications(false);
 
         // Set marker and circle with default radius
         const radiusKm = parseFloat(radius);
@@ -465,14 +524,25 @@ export default function InsightPage() {
                             <button
                                 key={mode}
                                 type="button"
-                                onClick={() => setHeatmapMode(heatmapMode === mode ? null : mode)}
+                                onClick={() => {
+                                    if (mode === 'recommended' && loadingRankings) {
+                                        return;
+                                    }
+                                    setHeatmapMode(mode);
+                                }}
+                                disabled={mode === 'recommended' && loadingRankings}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                                     heatmapMode === mode
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
+                                } ${mode === 'recommended' && loadingRankings ? 'opacity-80 cursor-not-allowed' : ''}`}
                             >
-                                {label}
+                                <span className="inline-flex items-center gap-2">
+                                    {label}
+                                    {mode === 'recommended' && loadingRankings && (
+                                        <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-label="Loading recommendations" />
+                                    )}
+                                </span>
                             </button>
                         ))}
                     </div>
@@ -484,8 +554,18 @@ export default function InsightPage() {
                 className={`transition-all left-panel-scroll duration-300 ease-in-out bg-gray-100 border-r border-gray-300 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-[28rem]' : 'w-0'} overflow-hidden`}
             >
                 <div className="left-panel-scroll p-5 w-[28rem] h-full flex flex-col overflow-y-auto min-h-0">
-                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight">Recommendations</h2>
-                    {rankedPostcodes.length === 0 ? (
+                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight inline-flex items-center gap-2">
+                        Recommendations
+                        {loadingRankings && (
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-label="Loading recommendations" />
+                        )}
+                    </h2>
+                    {loadingRankings && rankedPostcodes.length === 0 ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                            Fetching recommendation rankings...
+                        </div>
+                    ) : rankedPostcodes.length === 0 ? (
                         <p className="text-sm text-gray-400">No postcodes loaded yet.</p>
                     ) : (
                         <div className="space-y-4 flex-1 min-h-0">
@@ -549,15 +629,16 @@ export default function InsightPage() {
 
                                         {/* Why invest: 2–3 lines of insight (placeholder for now) */}
                                         <div className="p-3 mb-2">
-                                            <p className="text-xs text-gray-700 leading-relaxed">
-                                                Strong planning approval rates and rising commercial demand in this area.
-                                            </p>
-                                            <p className="text-xs text-gray-700 leading-relaxed mt-1">
-                                                Above-average income growth and good transport links support long-term value.
-                                            </p>
-                                            <p className="text-xs text-gray-700 leading-relaxed mt-1">
-                                                Placeholder: replace with generated insight per postcode.
-                                            </p>
+                                            {loadingJustifications && !postcodeJustifications[pc.rank] ? (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                                    Generating insight...
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-gray-700 leading-relaxed">
+                                                    {postcodeJustifications[pc.rank] || 'Insight unavailable for this recommendation right now.'}
+                                                </p>
+                                            )}
                                         </div>
 
                                         {/* Inner bottom tile: address listings */}
@@ -635,18 +716,20 @@ export default function InsightPage() {
                         setHoveredPostcode(postcode);
                     }}
                 />
-                {loadingPostcodes && (
-                    <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
-                        <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
-                            <div className="text-sm text-gray-600">Loading ranked postcodes...</div>
-                        </div>
-                    </div>
-                )}
-                {loadingGrid && (
-                    <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
-                        <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
-                            <div className="text-sm text-gray-600">Loading planning data...</div>
-                        </div>
+                {(loadingRankings || loadingGrid) && (
+                    <div className="absolute top-4 right-4 z-[600] pointer-events-none flex flex-col gap-2">
+                        {loadingRankings && (
+                            <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                Loading recommendation rankings...
+                            </div>
+                        )}
+                        {loadingGrid && (
+                            <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                Loading planning data...
+                            </div>
+                        )}
                     </div>
                 )}
                 {error && (
