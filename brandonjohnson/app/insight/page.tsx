@@ -20,7 +20,7 @@ const DynamicMap = dynamic(() => import('./DynamicMap'), {
 
 export default function InsightPage() {
     const [leftPanelOpen, setLeftPanelOpen] = useState(false);
-    const [expandedDetails, setExpandedDetails] = useState(false);
+    const [expandedDetails, setExpandedDetails] = useState(true);
     const searchBarRef = useRef<HTMLDivElement>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
@@ -472,6 +472,15 @@ export default function InsightPage() {
                 .left-panel-scroll::-webkit-scrollbar-thumb:hover {
                     background: #4b5563;
                 }
+                .radius-input::-webkit-outer-spin-button,
+                .radius-input::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+                .radius-input[type='number'] {
+                    -moz-appearance: textfield;
+                    appearance: textfield;
+                }
             `}} />
             {/* Floating Search Bar - top left, pushed right when left panel is open */}
             <div
@@ -497,7 +506,7 @@ export default function InsightPage() {
                                 className="w-full rounded-lg  px-3 py-2.5 text-s text-gray-900 placeholder:text-[#5e5e5e] focus:border-white focus:outline-none  tracking-tight"
                             />
                         </div>
-                        <div className="w-28">
+                        <div className="w-28 relative">
                             <input
                                 type="number"
                                 value={radius}
@@ -518,8 +527,11 @@ export default function InsightPage() {
                                 min="0"
                                 max="5"
                                 step="0.1"
-                                className="w-full px-3 py-2.5 border-l border-gray-300 text-s text-gray-900 placeholder:text-gray-400 focus:border-white focus:outline-none tracking-tight"
+                                className="radius-input w-full pl-3 pr-9 py-2.5 border-l border-gray-300 text-s text-gray-900 placeholder:text-gray-400 focus:border-white focus:outline-none tracking-tight"
                             />
+                            <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-s leading-none text-gray-500">
+                                km
+                            </span>
                         </div>
                         <button
                             type="button"
@@ -608,9 +620,6 @@ export default function InsightPage() {
                 <div className="left-panel-scroll p-5 w-[28rem] h-full flex flex-col overflow-y-auto min-h-0">
                     <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight inline-flex items-center gap-2">
                         Recommendations
-                        {loadingRankings && (
-                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-label="Loading recommendations" />
-                        )}
                     </h2>
                     {loadingRankings && rankedPostcodes.length === 0 ? (
                         <div className="flex items-center gap-2 text-sm text-gray-500">

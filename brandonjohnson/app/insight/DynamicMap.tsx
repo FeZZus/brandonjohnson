@@ -100,7 +100,7 @@ function MapResize() {
 function CustomZoomControl() {
     const map = useMap();
     return (
-        <div className="absolute top-4 right-4 z-1000 flex flex-col rounded-lg border border-gray-300 bg-gray-100 shadow-md overflow-hidden">
+        <div className="absolute bottom-4 right-4 z-1000 flex flex-col rounded-lg border border-gray-300 bg-gray-100 shadow-md overflow-hidden">
             <button
                 type="button"
                 onClick={() => map.zoomIn()}

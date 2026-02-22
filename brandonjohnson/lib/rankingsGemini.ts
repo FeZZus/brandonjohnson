@@ -9,7 +9,7 @@ type IndexedCell = {
   results: SquareResults;
 };
 
-const DEFAULT_BATCH_COUNT = 2;
+const DEFAULT_BATCH_COUNT = 3;
 const MAX_BATCH_CONCURRENCY = 4;
 
 const ai = new GoogleGenAI({
@@ -91,6 +91,7 @@ Data format per line:
 Rules:
 - Use only provided data; no external assumptions.
 - If inc=na, apply a modest uncertainty penalty (do not set score to 0 just for missing income).
+- Don't be overly optimistic
 - Prefer relative differences across area over absolute optimism.
 
 Business proposal:

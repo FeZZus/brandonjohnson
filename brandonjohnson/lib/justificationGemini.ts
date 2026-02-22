@@ -46,6 +46,7 @@ Data format:
 Rules:
 - Write exactly 1-2 sentences.
 - Do not mention the numeric score.
+- Don't be overly optimistic. If the score is low, focus on the weaknesses in the data rather than hypothetical positives.
 - Use only provided data; no extra assumptions.
 - If inc=na, mention income uncertainty briefly.
 
