@@ -18,6 +18,18 @@ type CellData = {
     };
 };
 
+type CellData = {
+    lat: number;
+    lng: number;
+    size_meters: number;
+    results: {
+        all: any[];
+        filtered: any[];
+        businessCategoryChartPoints: { name: string; value: number }[];
+        approvalRateResult: { name: string; approvalRate: number }[];
+    };
+};
+
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-full text-gray-400">Loading map...</div>
@@ -25,7 +37,7 @@ const DynamicMap = dynamic(() => import('./DynamicMap'), {
 
 export default function InsightPage() {
     const [leftPanelOpen, setLeftPanelOpen] = useState(false);
-    const [expandedDetails, setExpandedDetails] = useState(false);
+    const [expandedDetails, setExpandedDetails] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
