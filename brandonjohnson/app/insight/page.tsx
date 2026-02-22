@@ -321,6 +321,7 @@ export default function InsightPage() {
                             console.log('Ranked postcodes:');
                             console.dir(ranked);
                             setRankedPostcodes(ranked);
+                            setLoadingRankings(false);
 
                             if (rankedWithContext.length > 0) {
                                 setLoadingJustifications(true);
@@ -728,7 +729,7 @@ export default function InsightPage() {
                         setHoveredPostcode(postcode);
                     }}
                 />
-                {(loadingRankings || loadingGrid) && (
+                {(loadingRankings || loadingGrid || loadingJustifications) && (
                     <div className="absolute top-4 right-4 z-[600] pointer-events-none flex flex-col gap-2">
                         {loadingRankings && (
                             <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
@@ -740,6 +741,12 @@ export default function InsightPage() {
                             <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
                                 <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
                                 Loading planning data...
+                            </div>
+                        )}
+                        {loadingJustifications && (
+                            <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                Loading insights...
                             </div>
                         )}
                     </div>
