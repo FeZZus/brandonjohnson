@@ -1,5 +1,6 @@
 import { buildGrid } from "./grid";
 import { getIncomeForLatLng, IncomeGraphPoint } from "./incomeApi"
+import pLimit from "p-limit";
 import "dotenv/config";
 
 const BASE_URL = "https://ibex.seractech.co.uk";
@@ -293,50 +294,53 @@ export async function searchProposals(params: {
     radiusMeters: params.radius * 1000,
   });
 
-  // const cellDataArray: CellData[] = await Promise.all(
-  //   gridResult.cells.map(async (cell) => {
-  //     const cellResults = await searchProposals500m({
-  //       lng: cell.lng,
-  //       lat: cell.lat,
-  //       dateFrom: params.dateFrom,
-  //       dateTo: params.dateTo,
-  //       dateRangeType: params.dateRangeType,
-  //       pageSize: params.pageSize,
-  //     });
-  //     return {
-  //       lat: cell.lat,
-  //       lng: cell.lng,
-  //       size_meters: gridResult.cellSizeMeters,
-  //       results: cellResults,
-  //     };
-  //   })
-  // );
-  let cellDataArray: CellData[] = [];
-  for (const cell of gridResult.cells) {
-    const cellResults = await searchProposalsGridCell({
-      lng: cell.lng,
-      lat: cell.lat,
-      radius_meters: gridResult.cellSizeMeters,
-      dateFrom: params.dateFrom,
-      dateTo: params.dateTo,
-      dateRangeType: params.dateRangeType,
-      pageSize: params.pageSize,
-    }).catch((error) => {
-      console.error(`Error fetching data for cell at lat ${cell.lat}, lng ${cell.lng}:`, error);
-    });
-    if (cellResults) {
-      cellDataArray.push({
+  const limit = pLimit(3); // limit to 3 concurrent API calls to avoid rate limits
+  const cellDataArray: CellData[] = await Promise.all(
+    gridResult.cells.map((cell) => limit( async() =>{
+      const cellResults = await searchProposalsGridCell({
+        lng: cell.lng,
+        lat: cell.lat,
+        radius_meters: gridResult.cellSizeMeters,
+        dateFrom: params.dateFrom,
+        dateTo: params.dateTo,
+        dateRangeType: params.dateRangeType,
+        pageSize: params.pageSize,
+      });
+      return {
         lat: cell.lat,
         lng: cell.lng,
         size_meters: gridResult.cellSizeMeters,
         results: cellResults,
-      });
-    }
-    else{
-      console.log(`failed to fetch all ${gridResult.cells.length} cells, stopping early to avoid hitting API rate limits`);
-      break;
-    }
-  }
+      };
+    })
+  ));
+
+  // let cellDataArray: CellData[] = [];
+  // for (const cell of gridResult.cells) {
+  //   const cellResults = await searchProposalsGridCell({
+  //     lng: cell.lng,
+  //     lat: cell.lat,
+  //     radius_meters: gridResult.cellSizeMeters,
+  //     dateFrom: params.dateFrom,
+  //     dateTo: params.dateTo,
+  //     dateRangeType: params.dateRangeType,
+  //     pageSize: params.pageSize,
+  //   }).catch((error) => {
+  //     console.error(`Error fetching data for cell at lat ${cell.lat}, lng ${cell.lng}:`, error);
+  //   });
+  //   if (cellResults) {
+  //     cellDataArray.push({
+  //       lat: cell.lat,
+  //       lng: cell.lng,
+  //       size_meters: gridResult.cellSizeMeters,
+  //       results: cellResults,
+  //     });
+  //   }
+  //   else{
+  //     console.log(`failed to fetch all ${gridResult.cells.length} cells, stopping early to avoid hitting API rate limits`);
+  //     break;
+  //   }
+  // }
   
   return { cellDataArray };
 }
@@ -345,59 +349,45 @@ export type SearchProposalsResult = Awaited<ReturnType<typeof searchProposals>>;
 
 // --- Runner ---
 
-// async function main() {
-//   const lat = parseFloat(process.argv[2] ?? "");
-//   const lng = parseFloat(process.argv[3] ?? "");
-//   if (isNaN(lat) || isNaN(lng)) {
-//     console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
-//     console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
-//     process.exit(1);
-//   }
+async function main() {
+  const lat = parseFloat(process.argv[2] ?? "");
+  const lng = parseFloat(process.argv[3] ?? "");
+  if (isNaN(lat) || isNaN(lng)) {
+    console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
+    console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
+    process.exit(1);
+  }
 
-//   const now = new Date();
-//   const dateTo = now.toISOString().slice(0, 10);
-//   const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
-//     .toISOString()
-//     .slice(0, 10);
+  const now = new Date();
+  const dateTo = now.toISOString().slice(0, 10);
+  const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
+    .toISOString()
+    .slice(0, 10);
 
-//   const cellresults = await searchProposals({
-//     lng,
-//     lat,
-//     radius: 1,
-//     dateFrom,
-//     dateTo,
-//   });
+  const cellresults = await searchProposals({
+    lng,
+    lat,
+    radius: 5,
+    dateFrom,
+    dateTo,
+  });
 
-//   // console.log(JSON.stringify(cellresults, null, 2).length);
+  console.log(JSON.stringify(cellresults, null, 2).length);
 
-//   // for (const cellData of cellresults.cellDataArray) {
-//   //   console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
-//   //   console.log(`Total from API:        ${cellData.results.all.length}`);
-//   //   console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
-//   //   console.log("business category counts:");
-//   //   console.dir(cellData.results.businessCategoryChartPoints);
-//   //   console.log("approval rate by year:");
-//   //   console.dir(cellData.results.approvalRateResult);
-//   //   console.log(`new houses in period: ${cellData.results.newHousesOverPeriod}`);
-//   //   console.log("income graph points:");
-//   //   console.dir(cellData.results.incomeGraphPoints);
-//   // }
-
-//   type Omitted = Omit<Omit<Omit<CellData, "size_meters">, "lat">, "lng">;
-//   const t = cellresults.cellDataArray as Omitted[];
-//   // type Omitted2 = 
-//   const tt = t.map((cell) => {
-//     return {
-//       approvalRateResult: cell.results.approvalRateResult,
-//       businessCategoryChartPoints: cell.results.businessCategoryChartPoints,
-//       newHousesOverPeriod: cell.results.newHousesOverPeriod,
-//       incomeGraphPoints: cell.results.incomeGraphPoints,
-//     }
-//   });
-  
-//   console.dir(tt, { depth: null, colors: true });
+  for (const cellData of cellresults.cellDataArray) {
+    console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
+    console.log(`Total from API:        ${cellData.results.all.length}`);
+    console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
+    console.log("business category counts:");
+    console.dir(cellData.results.businessCategoryChartPoints);
+    console.log("approval rate by year:");
+    console.dir(cellData.results.approvalRateResult);
+    console.log(`new houses in period: ${cellData.results.newHousesOverPeriod}`);
+    console.log("income graph points:");
+    console.dir(cellData.results.incomeGraphPoints);
+  }
 
 
-// }
+}
 
-// main().catch(console.error);
+main().catch(console.error);
