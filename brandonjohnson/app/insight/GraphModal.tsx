@@ -50,7 +50,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
         if (activeTab === 0) {
             const chartData = planningChartPoints;
             return chartData.length > 0
-                ? <PieChartComponent data={chartData} title="Business Activity" />
+                ? <PieChartComponent data={chartData} title="Business Activity By Type" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No business activity data available</div>;
         }
 
@@ -90,9 +90,24 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                 <div className="flex-1 p-6 flex flex-col overflow-hidden relative">
                     <div className="mb-4">
                         <h3 className="text-2xl font-bold text-gray-800">{tabs[activeTab]}</h3>
-                        {gridCell && (
+                        {gridCell && postcode && activeTab === 0 && (
                             <p className="text-sm text-gray-500 mt-0.5">
-                                In this location | {gridCell.results.filtered.length} businesses
+                                {postcode.postcode} | Business Activity Index: {gridCell.results.filtered.length}
+                            </p>
+                        )}
+                        {gridCell && postcode && activeTab !== 0 && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                {postcode.postcode}
+                            </p>
+                        )}
+                        {gridCell && !postcode && activeTab === 0 && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                In this location | Business Activity Index: {gridCell.results.filtered.length}
+                            </p>
+                        )}
+                        {gridCell && !postcode && activeTab !== 0 && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                In this location
                             </p>
                         )}
                         {postcode && !gridCell && (

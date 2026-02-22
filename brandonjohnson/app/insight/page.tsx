@@ -605,6 +605,17 @@ export default function InsightPage() {
                     onGridCellHover={(key) => setHoveredGridCellKey(key)}
                     onGridCellClick={(cell) => {
                         setSelectedGridCell(cell);
+                        // Find matching postcode from rankedPostcodes by lat/lng
+                        const matchingPostcode = rankedPostcodes.find(
+                            (pc) => 
+                                pc.lat != null && 
+                                pc.lng != null && 
+                                Math.abs(pc.lat - cell.lat) < 0.00001 && 
+                                Math.abs(pc.lng - cell.lng) < 0.00001
+                        );
+                        if (matchingPostcode) {
+                            setSelectedPostcode(matchingPostcode);
+                        }
                         setModalOpen(true);
                     }}
                     onMarkerClick={(postcode) => {
