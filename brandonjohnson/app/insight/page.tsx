@@ -25,7 +25,7 @@ export default function InsightPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
-    const [radius, setRadius] = useState('5');
+    const [radius, setRadius] = useState('');
     const [description, setDescription] = useState('');
     const [rankedPostcodes, setRankedPostcodes] = useState<RankedPostcode[]>([]);
     const [loadingRankings, setLoadingRankings] = useState(false);
@@ -518,7 +518,7 @@ export default function InsightPage() {
                                         if (val < 0) setRadius('0');
                                     }
                                 }}
-                                placeholder="Radius (km)"
+                                placeholder="Radius"
                                 min="0"
                                 max="5"
                                 step="0.1"
