@@ -129,7 +129,6 @@ export default function InsightPage() {
 
     // Handle location search
     const handleSearch = async () => {
-        setLeftPanelOpen(true); // Open left panel when user clicks Search
         if (!location.trim()) {
             setError('Please enter a location');
             return;
@@ -239,6 +238,7 @@ export default function InsightPage() {
                         }
                     }
                     setPlanningIncomeSeries(planningData.income || []);
+                    setLeftPanelOpen(true);
                 } catch (err) {
                     console.error('Error fetching planning data:', err);
                 } finally {
