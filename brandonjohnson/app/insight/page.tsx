@@ -498,7 +498,7 @@ export default function InsightPage() {
                                                 </div>
                                             )}
                                             <a
-                                                href={`https://www.google.com/maps?q=&layer=c&cbll=${encodeURIComponent(pc.postcode).replace(/%20/g, '+')}`}
+                                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(pc.postcode).replace(/%20/g, '+')}&layer=c`}
                                                 target="_blank"
                                                 rel="noreferrer noopener"
                                                 onClick={(e) => e.stopPropagation()}

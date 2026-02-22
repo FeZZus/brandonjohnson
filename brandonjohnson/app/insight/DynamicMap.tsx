@@ -252,7 +252,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                 {/* Grid cells for planning data */}
                 {gridCells.map((cell, index) => {
                     const color = cellColors[index] ?? '#E5E7EB';
-                    const halfSize = cell.size_meters;
+                    const halfSize = cell.size_meters / 2;
                     const latDegPerM = 1 / 111000;
                     const lngDegPerM = 1 / (111000 * Math.cos((cell.lat * Math.PI) / 180));
                     const bounds: [[number, number], [number, number]] = [
@@ -272,6 +272,22 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                                 fillOpacity: 0.4,
                             }}
                             eventHandlers={{
+                                mouseover: (e) => {
+                                    e.target.setStyle({
+                                        color: '#4B5563',
+                                        weight: 2,
+                                        opacity: 0.9,
+                                        fillOpacity: 0.6,
+                                    });
+                                },
+                                mouseout: (e) => {
+                                    e.target.setStyle({
+                                        color: '#4B5563',
+                                        weight: 1,
+                                        opacity: 0.5,
+                                        fillOpacity: 0.4,
+                                    });
+                                },
                                 click: (e) => {
                                     DomEvent.stop(e);
                                     if (onGridCellClick) {
