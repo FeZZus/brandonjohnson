@@ -72,6 +72,7 @@ export default function InsightPage() {
     const [gridCells, setGridCells] = useState<CellData[]>([]);
     const [loadingGrid, setLoadingGrid] = useState(false);
     const [loadingJustifications, setLoadingJustifications] = useState(false);
+    const [rankingScoresBySquareIndex, setRankingScoresBySquareIndex] = useState<Record<number, number>>({});
     const [postcodeJustifications, setPostcodeJustifications] = useState<Record<number, string>>({});
     const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
@@ -197,6 +198,7 @@ export default function InsightPage() {
 
         setSearchingLocation(true);
         setHeatmapMode('residential');
+        setRankingScoresBySquareIndex({});
         setPostcodeJustifications({});
         setLoadingJustifications(false);
         setError(null);
@@ -272,6 +274,19 @@ export default function InsightPage() {
 
                             const rankingsPayload = await rankingsResponse.json();
                             const rankings = Array.isArray(rankingsPayload?.rankings) ? rankingsPayload.rankings : [];
+
+                            const allScoresByIndex = rankings.reduce((acc: Record<number, number>, item: { squareIndex?: number; score?: number }) => {
+                                if (
+                                    typeof item?.squareIndex === 'number' &&
+                                    item.squareIndex >= 1 &&
+                                    item.squareIndex <= cells.length &&
+                                    typeof item?.score === 'number'
+                                ) {
+                                    acc[item.squareIndex] = item.score;
+                                }
+                                return acc;
+                            }, {});
+                            setRankingScoresBySquareIndex(allScoresByIndex);
 
                             const topRankings = rankings
                                 .filter((item: { squareIndex?: number; score?: number }) =>
@@ -387,6 +402,7 @@ export default function InsightPage() {
         setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         // Clear existing grid squares and selection
         setGridCells([]);
+        setRankingScoresBySquareIndex({});
         setSelectedGridCell(null);
         setModalOpen(false);
         setPlanningIncomeSeries([]);
@@ -704,6 +720,7 @@ export default function InsightPage() {
                     onMapClick={handleMapClick}
                     gridCells={gridCells}
                     heatmapMode={heatmapMode}
+                    rankingScoresBySquareIndex={rankingScoresBySquareIndex}
                     hoveredGridCellKey={hoveredGridCellKey}
                     onGridCellHover={(key) => setHoveredGridCellKey(key)}
                     onGridCellClick={(cell) => {

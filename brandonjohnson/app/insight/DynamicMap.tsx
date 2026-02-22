@@ -162,11 +162,12 @@ interface DynamicMapProps {
     onGridCellClick?: (cell: SearchProposalsResult['cellDataArray'][number]) => void;
     gridCells?: SearchProposalsResult['cellDataArray'];
     heatmapMode?: 'recommended' | 'residential' | 'income' | null;
+    rankingScoresBySquareIndex?: Record<number, number>;
     hoveredGridCellKey?: string | null;
     onGridCellHover?: (key: string | null) => void;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [], heatmapMode = null, hoveredGridCellKey = null, onGridCellHover }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [], heatmapMode = null, rankingScoresBySquareIndex = {}, hoveredGridCellKey = null, onGridCellHover }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -181,13 +182,8 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
         if (mode === 'residential') {
             gridCells.forEach((cell) => values.push(cell.results.newHousesOverPeriod));
         } else if (mode === 'recommended') {
-            gridCells.forEach((cell) => {
-                const activity = cell.results.filtered.length;
-                const arr = cell.results.approvalRateResult ?? [];
-                const avgApproval = arr.length
-                    ? arr.reduce((s: number, p: { approvalRate: number }) => s + p.approvalRate, 0) / arr.length
-                    : 0;
-                values.push(activity * 10 + avgApproval);
+            gridCells.forEach((_, index) => {
+                values.push(rankingScoresBySquareIndex[index + 1] ?? 0);
             });
         } else if (mode === 'income') {
             gridCells.forEach((cell) => {
@@ -209,7 +205,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
         });
 
         return { cellColors: colors };
-    }, [gridCells, heatmapMode]);
+    }, [gridCells, heatmapMode, rankingScoresBySquareIndex]);
 
     return (
         <div className="relative w-full h-full">
