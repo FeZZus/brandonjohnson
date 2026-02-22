@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap, useMapEvents } from 'react-leaflet';
 import { Icon, DomEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
@@ -29,16 +29,16 @@ const iconCache = new Map<string, Icon>();
 // Search result marker icon - smaller yellow/amber pin
 function createSearchMarkerIcon(): Icon {
     const cacheKey = 'search';
-    
+
     if (iconCache.has(cacheKey)) {
         return iconCache.get(cacheKey)!;
     }
-    
+
     const svg = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
         <circle cx="20" cy="20" r="12" fill="${SEARCH_MARKER_COLOR}" stroke="white" stroke-width="2"/>
         <circle cx="20" cy="20" r="4" fill="white"/>
     </svg>`;
-    
+
     const encodedSvg = encodeURIComponent(svg);
     const icon = new Icon({
         iconUrl: `data:image/svg+xml,${encodedSvg}`,
@@ -46,7 +46,7 @@ function createSearchMarkerIcon(): Icon {
         iconAnchor: [SEARCH_MARKER_SIZE / 2, SEARCH_MARKER_SIZE / 2],
         popupAnchor: [0, -SEARCH_MARKER_SIZE / 2],
     });
-    
+
     iconCache.set(cacheKey, icon);
     return icon;
 }
@@ -54,17 +54,17 @@ function createSearchMarkerIcon(): Icon {
 // Custom marker icon - large circle for area visualization
 function createAreaMarkerIcon(isHovered: boolean = false): Icon {
     const cacheKey = isHovered ? 'hovered' : 'normal';
-    
+
     // Return cached icon if available
     if (iconCache.has(cacheKey)) {
         return iconCache.get(cacheKey)!;
     }
-    
+
     const size = MARKER_SIZE;
     const color = isHovered ? MARKER_HOVER_COLOR : MARKER_COLOR;
     const strokeWidth = isHovered ? 5 : 3; // Thicker stroke when hovered
     const opacity = isHovered ? 0.6 : 0.4; // More opaque when hovered
-    
+
     // Create a large semi-transparent circle to represent an area
     const svg = `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
         <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 4}" fill="${color}" fill-opacity="${opacity}" stroke="${color}" stroke-width="${strokeWidth}"/>
@@ -78,7 +78,7 @@ function createAreaMarkerIcon(isHovered: boolean = false): Icon {
         iconAnchor: [size / 2, size / 2],
         popupAnchor: [0, -size / 2],
     });
-    
+
     // Cache the icon
     iconCache.set(cacheKey, icon);
     return icon;
@@ -87,7 +87,7 @@ function createAreaMarkerIcon(isHovered: boolean = false): Icon {
 // Component to fit map bounds to show all markers
 function MapBounds({ postcodes }: { postcodes: RankedPostcode[] }) {
     const map = useMap();
-    
+
     useEffect(() => {
         const validPostcodes = postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined);
         if (validPostcodes.length > 0) {
@@ -101,25 +101,25 @@ function MapBounds({ postcodes }: { postcodes: RankedPostcode[] }) {
 // Component to handle map resize when container size changes
 function MapResize() {
     const map = useMap();
-    
+
     useEffect(() => {
         // Initial resize after mount
         const timer = setTimeout(() => {
             map.invalidateSize();
         }, 100);
-        
+
         // Also trigger resize periodically to catch container size changes
         // (e.g., when side panels open/close)
         const interval = setInterval(() => {
             map.invalidateSize();
         }, 1000);
-        
+
         return () => {
             clearTimeout(timer);
             clearInterval(interval);
         };
     }, [map]);
-    
+
     // Also listen for window resize
     useEffect(() => {
         const handleResize = () => {
@@ -128,7 +128,7 @@ function MapResize() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, [map]);
-    
+
     return null;
 }
 
@@ -161,7 +161,7 @@ function CustomZoomControl() {
 // Component to pan/zoom map to a specific center location
 function MapCenter({ center }: { center: { lat: number; lng: number; zoom: number } | null }) {
     const map = useMap();
-    
+
     useEffect(() => {
         if (center) {
             // Pan and zoom to the new location with smooth animation
@@ -171,7 +171,19 @@ function MapCenter({ center }: { center: { lat: number; lng: number; zoom: numbe
             });
         }
     }, [center, map]);
-    
+
+    return null;
+}
+
+// Component to handle map click events
+function MapEvents({ onMapClick }: { onMapClick?: (lat: number, lng: number) => void }) {
+    useMapEvents({
+        click: (e) => {
+            if (onMapClick) {
+                onMapClick(e.latlng.lat, e.latlng.lng);
+            }
+        },
+    });
     return null;
 }
 
@@ -214,128 +226,129 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                 zoomControl={false}
             >
                 <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <MapResize />
-            <MapCenter center={mapCenter} />
-            {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
-            
-            {/* Grid cells for planning data */}
-            {gridCells.map((cell, index) => {
-                const count = cell.results.filtered.length;
-                const color = getDensityColor(count);
-                
-                // Calculate cell bounds from center point and size
-                // const halfSize = cell.size_meters / 2;
-                const halfSize = cell.size_meters;
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <MapResize />
+                <MapCenter center={mapCenter} />
+                <MapEvents onMapClick={onMapClick} />
+                {validPostcodes.length > 0 && <MapBounds postcodes={postcodes} />}
 
-                // Approximate degrees per meter
-                const latDegPerM = 1 / 111000;
-                const lngDegPerM = 1 / (111000 * Math.cos((cell.lat * Math.PI) / 180));
-                
-                const bounds: [[number, number], [number, number]] = [
-                    [cell.lat - (halfSize * latDegPerM), cell.lng - (halfSize * lngDegPerM)],
-                    [cell.lat + (halfSize * latDegPerM), cell.lng + (halfSize * lngDegPerM)]
-                ];
+                {/* Grid cells for planning data */}
+                {gridCells.map((cell, index) => {
+                    const count = cell.results.filtered.length;
+                    const color = getDensityColor(count);
 
-                console.log(`Cell ${index + 1}: Count=${count}, Color=${color}, Bounds=${JSON.stringify(bounds)}`);
-                
-                // Cell 1: Count=56, Color=#FCA5A5, Bounds=[[51.5029414954955,-0.1350021641361522],[51.511950504504505,-0.12052783586384777]]
+                    // Calculate cell bounds from center point and size
+                    // const halfSize = cell.size_meters / 2;
+                    const halfSize = cell.size_meters;
+
+                    // Approximate degrees per meter
+                    const latDegPerM = 1 / 111000;
+                    const lngDegPerM = 1 / (111000 * Math.cos((cell.lat * Math.PI) / 180));
+
+                    const bounds: [[number, number], [number, number]] = [
+                        [cell.lat - (halfSize * latDegPerM), cell.lng - (halfSize * lngDegPerM)],
+                        [cell.lat + (halfSize * latDegPerM), cell.lng + (halfSize * lngDegPerM)]
+                    ];
+
+                    console.log(`Cell ${index + 1}: Count=${count}, Color=${color}, Bounds=${JSON.stringify(bounds)}`);
+
+                    // Cell 1: Count=56, Color=#FCA5A5, Bounds=[[51.5029414954955,-0.1350021641361522],[51.511950504504505,-0.12052783586384777]]
 
 
-                return (
-                    <Rectangle
-                        key={`cell-${index}`}
-                        bounds={bounds}
+                    return (
+                        <Rectangle
+                            key={`cell-${index}`}
+                            bounds={bounds}
+                            pathOptions={{
+                                color: '#4B5563',
+                                weight: 1,
+                                opacity: 0.5,
+                                fillColor: color,
+                                fillOpacity: 0.4,
+                            }}
+                            eventHandlers={{
+                                click: (e) => {
+                                    DomEvent.stop(e);
+                                    if (onGridCellClick) {
+                                        onGridCellClick(cell);
+                                    }
+                                },
+                            }}
+                        />
+                    );
+                })}
+
+                {searchMarker && typeof searchMarker.radiusKm === 'number' && searchMarker.radiusKm > 0 && (
+                    <Circle
+                        center={[searchMarker.lat, searchMarker.lng]}
+                        radius={searchMarker.radiusKm * 1000}
                         pathOptions={{
-                            color: '#4B5563',
-                            weight: 1,
-                            opacity: 0.5,
-                            fillColor: color,
-                            fillOpacity: 0.4,
-                        }}
-                        eventHandlers={{
-                            click: (e) => {
-                                DomEvent.stop(e);
-                                if (onGridCellClick) {
-                                    onGridCellClick(cell);
-                                }
-                            },
+                            color: SEARCH_CIRCLE_COLOR,
+                            weight: 2,
+                            opacity: 0.6,
+                            fillColor: SEARCH_CIRCLE_COLOR,
+                            fillOpacity: 0.1,
                         }}
                     />
-                );
-            })}
-            
-            {searchMarker && typeof searchMarker.radiusKm === 'number' && searchMarker.radiusKm > 0 && (
-                <Circle
-                    center={[searchMarker.lat, searchMarker.lng]}
-                    radius={searchMarker.radiusKm * 1000}
-                    pathOptions={{
-                        color: SEARCH_CIRCLE_COLOR,
-                        weight: 2,
-                        opacity: 0.6,
-                        fillColor: SEARCH_CIRCLE_COLOR,
-                        fillOpacity: 0.1,
-                    }}
-                />
-            )}
-            {searchMarker && (
-                <Marker
-                    position={[searchMarker.lat, searchMarker.lng]}
-                    icon={createSearchMarkerIcon()}
-                >
-                    <Popup>
-                        <div className="text-center">
-                            <div className="font-semibold text-sm">Search Location</div>
-                            <div className="text-xs text-gray-600 mt-1">{searchMarker.lat.toFixed(4)}, {searchMarker.lng.toFixed(4)}</div>
-                        </div>
-                    </Popup>
-                </Marker>
-            )}
-            {validPostcodes.map((pc, index) => {
-                const isHovered = hoveredPostcode === pc.postcode;
-                return (
+                )}
+                {searchMarker && (
                     <Marker
-                        key={`${pc.postcode}-${pc.rank}-${index}`}
-                        position={[pc.lat!, pc.lng!]}
-                        icon={createAreaMarkerIcon(isHovered)}
-                        eventHandlers={{
-                            click: () => {
-                                if (onMarkerClick) {
-                                    onMarkerClick(pc);
-                                }
-                            },
-                            mouseover: () => {
-                                if (onMarkerHover) {
-                                    onMarkerHover(pc.postcode);
-                                }
-                            },
-                            mouseout: () => {
-                                if (onMarkerHover) {
-                                    onMarkerHover(null);
-                                }
-                            },
-                        }}
+                        position={[searchMarker.lat, searchMarker.lng]}
+                        icon={createSearchMarkerIcon()}
                     >
                         <Popup>
                             <div className="text-center">
-                                <div className="font-bold text-lg mb-1">Rank #{pc.rank}</div>
-                                <div className="text-sm text-gray-600">{pc.postcode}</div>
-                                {onMarkerClick && (
-                                    <button
-                                        onClick={() => onMarkerClick(pc)}
-                                        className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
-                                    >
-                                        View Details
-                                    </button>
-                                )}
+                                <div className="font-semibold text-sm">Search Location</div>
+                                <div className="text-xs text-gray-600 mt-1">{searchMarker.lat.toFixed(4)}, {searchMarker.lng.toFixed(4)}</div>
                             </div>
                         </Popup>
                     </Marker>
-                );
-            })}
-        <CustomZoomControl />
+                )}
+                {validPostcodes.map((pc, index) => {
+                    const isHovered = hoveredPostcode === pc.postcode;
+                    return (
+                        <Marker
+                            key={`${pc.postcode}-${pc.rank}-${index}`}
+                            position={[pc.lat!, pc.lng!]}
+                            icon={createAreaMarkerIcon(isHovered)}
+                            eventHandlers={{
+                                click: () => {
+                                    if (onMarkerClick) {
+                                        onMarkerClick(pc);
+                                    }
+                                },
+                                mouseover: () => {
+                                    if (onMarkerHover) {
+                                        onMarkerHover(pc.postcode);
+                                    }
+                                },
+                                mouseout: () => {
+                                    if (onMarkerHover) {
+                                        onMarkerHover(null);
+                                    }
+                                },
+                            }}
+                        >
+                            <Popup>
+                                <div className="text-center">
+                                    <div className="font-bold text-lg mb-1">Rank #{pc.rank}</div>
+                                    <div className="text-sm text-gray-600">{pc.postcode}</div>
+                                    {onMarkerClick && (
+                                        <button
+                                            onClick={() => onMarkerClick(pc)}
+                                            className="mt-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                                        >
+                                            View Details
+                                        </button>
+                                    )}
+                                </div>
+                            </Popup>
+                        </Marker>
+                    );
+                })}
+                <CustomZoomControl />
             </MapContainer>
         </div>
     );

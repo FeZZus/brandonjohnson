@@ -165,6 +165,52 @@ export default function InsightPage() {
         }
     };
 
+    const clampRadius = (value: number) => Math.min(5, Math.max(0, value));
+
+    const applySearchResult = async (lat: number, lng: number, radiusNum: number) => {
+        const safeRadius = clampRadius(radiusNum);
+
+        // Calculate zoom level based on radius to show the whole circle taking up ~80% of screen
+        let zoomLevel = 13;
+        if (safeRadius > 0) {
+            if (safeRadius <= 1) zoomLevel = 15;
+            else if (safeRadius <= 2) zoomLevel = 14;
+            else if (safeRadius <= 5) zoomLevel = 13;
+            else if (safeRadius <= 10) zoomLevel = 12;
+            else if (safeRadius <= 20) zoomLevel = 11;
+            else if (safeRadius <= 50) zoomLevel = 10;
+            else if (safeRadius <= 100) zoomLevel = 9;
+            else if (safeRadius <= 200) zoomLevel = 8;
+            else zoomLevel = 7;
+        }
+
+        setMapCenter({ lat, lng, zoom: zoomLevel });
+        setSearchMarker({ lat, lng, radiusKm: safeRadius });
+        setError(null);
+
+        // Fetch planning data for grid cells
+        setLoadingGrid(true);
+        try {
+            const planningResponse = await fetch('/api/planning', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    lng,
+                    lat,
+                    radius: safeRadius,
+                    yearsBack: 5,
+                }),
+            });
+            const planningData = await planningResponse.json();
+            setGridCells(planningData.cellDataArray || []);
+            setPlanningIncomeSeries(planningData.income || []);
+        } catch (err) {
+            console.error('Error fetching planning data:', err);
+        } finally {
+            setLoadingGrid(false);
+        }
+    };
+
     // Handle location search
     const handleSearch = async () => {
         setLeftPanelOpen(true); // Open left panel when user clicks Search
@@ -186,57 +232,7 @@ export default function InsightPage() {
         try {
             const result = await geocodeLocation(location);
             if (result) {
-                // Calculate zoom level based on radius to show the whole circle taking up ~80% of screen
-                // If no radius, default to zoom 13
-                let zoomLevel = 13;
-                if (radius && parseFloat(radius) > 0) {
-                    const radiusKm = parseFloat(radius);
-                    // Simple formula: higher radius = lower zoom level (zoom out more)
-                    // Adjust the divisor to get 80% coverage
-                    if (radiusKm <= 1) zoomLevel = 15;
-                    else if (radiusKm <= 2) zoomLevel = 14;
-                    else if (radiusKm <= 5) zoomLevel = 13;
-                    else if (radiusKm <= 10) zoomLevel = 12;
-                    else if (radiusKm <= 20) zoomLevel = 11;
-                    else if (radiusKm <= 50) zoomLevel = 10;
-                    else if (radiusKm <= 100) zoomLevel = 9;
-                    else if (radiusKm <= 200) zoomLevel = 8;
-                    else zoomLevel = 7;
-                }
-
-                setMapCenter({
-                    lat: result.lat,
-                    lng: result.lng,
-                    zoom: zoomLevel,
-                });
-                setSearchMarker({
-                    lat: result.lat,
-                    lng: result.lng,
-                    radiusKm: radius ? parseFloat(radius) : undefined,
-                });
-                setError(null);
-
-                // Fetch planning data for grid cells
-                setLoadingGrid(true);
-                try {
-                    const planningResponse = await fetch('/api/planning', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            lng: result.lng,
-                            lat: result.lat,
-                            radius: radiusNum,
-                            yearsBack: 5
-                        })
-                    });
-                    const planningData = await planningResponse.json();
-                    setGridCells(planningData.cellDataArray || []);
-                    setPlanningIncomeSeries(planningData.income || []);
-                } catch (err) {
-                    console.error('Error fetching planning data:', err);
-                } finally {
-                    setLoadingGrid(false);
-                }
+                await applySearchResult(result.lat, result.lng, radiusNum);
             } else {
                 setError(`Location not found: ${location}`);
             }
@@ -257,19 +253,20 @@ export default function InsightPage() {
         setModalOpen(false);
         setPlanningIncomeSeries([]);
 
-        // Set marker and circle with default radius
-        const radiusKm = parseFloat(radius);
+        const radiusNum = parseFloat(radius);
+        const safeRadius = isNaN(radiusNum) ? 5 : radiusNum;
+
+        // Only update marker/circle and map center; no data fetch on click
         setSearchMarker({
             lat,
             lng,
-            radiusKm: !isNaN(radiusKm) ? radiusKm : 5,
+            radiusKm: safeRadius,
         });
 
-        // Center map on clicked location
         setMapCenter({
             lat,
             lng,
-            zoom: 13,
+            zoom: safeRadius <= 1 ? 15 : safeRadius <= 2 ? 14 : 13,
         });
     };
 
