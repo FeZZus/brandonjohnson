@@ -85,7 +85,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
 
     return (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-2000">
-            <div className="bg-gray-100 border border-gray-300 rounded-xl shadow-2xl w-225 h-150 flex overflow-hidden">
+            <div className="bg-gray-100 border border-gray-300 rounded-xl shadow-2xl w-225 h-175 flex overflow-hidden">
                 {/* Main Content */}
                 <div className="flex-1 p-6 flex flex-col overflow-hidden relative">
                     <div className="mb-4">

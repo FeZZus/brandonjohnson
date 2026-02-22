@@ -53,7 +53,8 @@ const DynamicMap = dynamic(() => import('./DynamicMap'), {
 
 export default function InsightPage() {
     const [leftPanelOpen, setLeftPanelOpen] = useState(false);
-    const [expandedDetails, setExpandedDetails] = useState(true);
+    const [expandedDetails, setExpandedDetails] = useState(false);
+    const searchBarRef = useRef<HTMLDivElement>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
@@ -434,22 +435,29 @@ export default function InsightPage() {
             `}} />
             {/* Floating Search Bar - top left, pushed right when left panel is open */}
             <div
+                ref={searchBarRef}
                 className={`absolute top-5 z-[500] w-full max-w-xl transition-[left] duration-300 ease-in-out pb-3 font-sans antialiased ${leftPanelOpen ? 'left-[29rem]' : 'left-5'}`}
             >
-                <div className="relative bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4">
-                    <div className="flex items-end gap-3">
+                <div className="relative bg-gray-100 border border-gray-300 rounded-xl shadow-md p-1">
+                    <div className="flex items-center gap-3">
                         <div className="flex-1">
-                            <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Location</label>
                             <input
                                 type="text"
                                 value={location}
                                 onChange={(e) => setLocation(e.target.value)}
-                                placeholder="Enter location"
-                                className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 tracking-tight"
+                                onFocus={() => setExpandedDetails(true)}
+                                onBlur={() => {
+                                    setTimeout(() => {
+                                        if (!searchBarRef.current?.contains(document.activeElement)) {
+                                            setExpandedDetails(false);
+                                        }
+                                    }, 0);
+                                }}
+                                placeholder="Search places"
+                                className="w-full rounded-lg  px-3 py-2.5 text-s text-gray-900 placeholder:text-[#5e5e5e] focus:border-white focus:outline-none  tracking-tight"
                             />
                         </div>
                         <div className="w-28">
-                            <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Radius (km)</label>
                             <input
                                 type="number"
                                 value={radius}
@@ -466,33 +474,37 @@ export default function InsightPage() {
                                         if (val < 0) setRadius('0');
                                     }
                                 }}
-                                placeholder="Radius"
+                                placeholder="Radius (km)"
                                 min="0"
                                 max="5"
                                 step="0.1"
-                                className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 tracking-tight"
+                                className="w-full px-3 py-2.5 border-l border-gray-300 text-s text-gray-900 placeholder:text-gray-400 focus:border-white focus:outline-none tracking-tight"
                             />
                         </div>
                         <button
+                            type="button"
                             onClick={handleSearch}
                             disabled={searchingLocation}
-                            className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-500 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
+                            className="flex items-center justify-center w-9 h-9 shrink-0 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label={searchingLocation ? 'Searching...' : 'Search'}
                         >
-                            {searchingLocation ? 'Searching...' : 'Search'}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg>
                         </button>
                     </div>
 
                     <div className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                         <div className="min-h-0">
                             {expandedDetails && (
-                                <div className="pt-3 border-t border-gray-300 mt-3">
-                                    <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Tell me about your use case</label>
+                                <div className="pt-1 border-t border-gray-300 mt-1">
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         rows={3}
                                         placeholder="I want to open up a bakery..."
-                                        className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none tracking-tight leading-relaxed"
+                                        className="w-full rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-white focus:outline-none resize-none tracking-tight leading-relaxed"
                                     />
                                 </div>
                             )}

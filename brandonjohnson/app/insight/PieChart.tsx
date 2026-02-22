@@ -14,7 +14,7 @@ interface PieChartProps {
     title?: string;
 }
 
-const COLORS = ['#1f2937', '#4b5563', '#6b7280', '#9ca3af', '#374151', '#d1d5db', '#111827', '#e5e7eb'];
+const COLORS = ['#1f2937', '#4b5563', '#6b7280', '#9ca3af', '#374151', '#9ca3af', '#111827', '#6b7280'];
 
 export default function PieChartComponent({ data, title = 'Pie Chart' }: PieChartProps) {
     // Sample data if none is provided
@@ -36,10 +36,10 @@ export default function PieChartComponent({ data, title = 'Pie Chart' }: PieChar
                     <Pie
                         data={chartData}
                         cx="50%"
-                        cy="50%"
+                        cy="45%"
                         labelLine={false}
                         label={({ name, value }) => `${name} (${value})`}
-                        outerRadius={130}
+                        outerRadius={110}
                         fill="#8884d8"
                         dataKey="value"
                     >
