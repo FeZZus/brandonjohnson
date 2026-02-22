@@ -66,6 +66,24 @@ export async function geocodePostcodes(
   }
   return results;
 }
+/** Reverse geocode: lat/lng → nearest UK postcode (uses postcodes.io). */
+export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.postcodes.io/postcodes?lon=${lng}&lat=${lat}`
+    );
+    if (!res.ok) return null;
+    const json = await res.json();
+    if (json.status !== 200 || !Array.isArray(json.result) || json.result.length === 0)
+      return null;
+    const postcode = json.result[0]?.postcode;
+    return typeof postcode === "string" ? postcode : null;
+  } catch (error) {
+    console.error(`Error reverse geocoding ${lat}, ${lng}:`, error);
+    return null;
+  }
+}
+
 // Geocode any location (city, address, postcode, etc.)
 export async function geocodeLocation(location: string): Promise<GeocodeResult | null> {
   try {

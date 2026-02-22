@@ -135,7 +135,7 @@ function genApprovalRate(applications: Application[]) : RateGraphPoint[] {
   }
   const graphPoints: RateGraphPoint[] = Object.entries(byYear).map(([year, stats]) => ({
     name: year,
-    approvalRate: stats.approvalRate,
+    approvalRate: Math.trunc(stats.approvalRate),
   }));
   return graphPoints;
 }
@@ -370,18 +370,33 @@ export type SearchProposalsResult = Awaited<ReturnType<typeof searchProposals>>;
 
 //   // console.log(JSON.stringify(cellresults, null, 2).length);
 
-//   for (const cellData of cellresults.cellDataArray) {
-//     console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
-//     console.log(`Total from API:        ${cellData.results.all.length}`);
-//     console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
-//     console.log("business category counts:");
-//     console.dir(cellData.results.businessCategoryChartPoints);
-//     console.log("approval rate by year:");
-//     console.dir(cellData.results.approvalRateResult);
-//     console.log(`new houses in period: ${cellData.results.newHousesOverPeriod}`);
-//     console.log("income graph points:");
-//     console.dir(cellData.results.incomeGraphPoints);
-//   }
+//   // for (const cellData of cellresults.cellDataArray) {
+//   //   console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
+//   //   console.log(`Total from API:        ${cellData.results.all.length}`);
+//   //   console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
+//   //   console.log("business category counts:");
+//   //   console.dir(cellData.results.businessCategoryChartPoints);
+//   //   console.log("approval rate by year:");
+//   //   console.dir(cellData.results.approvalRateResult);
+//   //   console.log(`new houses in period: ${cellData.results.newHousesOverPeriod}`);
+//   //   console.log("income graph points:");
+//   //   console.dir(cellData.results.incomeGraphPoints);
+//   // }
+
+//   type Omitted = Omit<Omit<Omit<CellData, "size_meters">, "lat">, "lng">;
+//   const t = cellresults.cellDataArray as Omitted[];
+//   // type Omitted2 = 
+//   const tt = t.map((cell) => {
+//     return {
+//       approvalRateResult: cell.results.approvalRateResult,
+//       businessCategoryChartPoints: cell.results.businessCategoryChartPoints,
+//       newHousesOverPeriod: cell.results.newHousesOverPeriod,
+//       incomeGraphPoints: cell.results.incomeGraphPoints,
+//     }
+//   });
+  
+//   console.dir(tt, { depth: null, colors: true });
+
 
 // }
 

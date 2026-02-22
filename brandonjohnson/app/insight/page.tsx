@@ -17,17 +17,42 @@ type CellData = {
         approvalRateResult: { name: string; approvalRate: number }[];
     };
 };
+type AddressListing = {
+    address: string;
+    link: string;
+};
 
-type CellData = {
-    lat: number;
-    lng: number;
-    size_meters: number;
-    results: {
-        all: any[];
-        filtered: any[];
-        businessCategoryChartPoints: { name: string; value: number }[];
-        approvalRateResult: { name: string; approvalRate: number }[];
-    };
+const exampleAddressListingsByPostcode: Record<string, AddressListing[]> = {
+    'WC2H 7DT': [
+        {
+            address: 'London NW1 8QS',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGF7z5KM7tiPitaJrg_4szfGHNvTOtiCVUOhwlaGCS6O3TaN7YI3ZmKs3FKkerjdFhCYFM2dnyLmmYw5HhB535rFNu3NeeEm83ty3l7rnxxOh5sZiaKEGIrWKCSWNcKeVW2',
+        },
+    ],
+    'WC2R 0JR': [
+        {
+            address: 'London NW1 8QS',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGF7z5KM7tiPitaJrg_4szfGHNvTOtiCVUOhwlaGCS6O3TaN7YI3ZmKs3FKkerjdFhCYFM2dnyLmmYw5HhB535rFNu3NeeEm83ty3l7rnxxOh5sZiaKEGIrWKCSWNcKeVW2',
+        },
+        {
+            address: '137-139 Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+        {
+            address: '99-99A Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+    ],
+    'SW1A 2EP': [
+        {
+            address: '137-139 Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+        {
+            address: '99-99A Kentish Town Rd London NW1 8PB',
+            link: 'https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHyvv6HOM5bFa_bx3n0jmOwZ81Dtf1HaU8MMVLTZ7wKm6sd9RJa-XsuIyAPY_qs52k-1p9rSeEEGkxJkIVaES0sNOxsphGan847M-zgPigwZxblVcJedVqtZoaDYDvDd46xAMpHI4odYXFqTl3LP1s9oXz5WkH4',
+        },
+    ],
 };
 
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
@@ -139,37 +164,14 @@ export default function InsightPage() {
         // fetchRankedPostcodes();
     }, []);
 
-    const handleFetchPostcodes = async () => {
-        setLoadingPostcodes(true);
-        setError(null);
-        try {
-            const response = await fetch('/api/postcodes', { method: 'GET' });
-            const data = await response.json();
-            let postcodes: RankedPostcode[] = data.postcodes || [];
-            const needsGeocoding = postcodes.filter(pc => !pc.lat || !pc.lng);
-            if (needsGeocoding.length > 0) {
-                const geocodeResults = await geocodePostcodes(needsGeocoding.map(pc => pc.postcode));
-                postcodes = postcodes.map(pc => {
-                    const geocoded = geocodeResults.get(pc.postcode);
-                    if (geocoded && (!pc.lat || !pc.lng)) {
-                        return { ...pc, lat: pc.lat || geocoded.lat, lng: pc.lng || geocoded.lng };
-                    }
-                    return pc;
-                });
-            }
-            setRankedPostcodes(postcodes);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load ranked postcodes');
-        } finally {
-            setLoadingPostcodes(false);
-        }
-    };
-
     // Handle location search
     const handleSearch = async () => {
-        setLeftPanelOpen(true); // Open left panel when user clicks Search
         if (!location.trim()) {
             setError('Please enter a location');
+            return;
+        }
+        if (!description.trim()) {
+            setError('Please enter a description (tell me a use case)');
             return;
         }
 
@@ -230,8 +232,50 @@ export default function InsightPage() {
                         })
                     });
                     const planningData = await planningResponse.json();
-                    setGridCells(planningData.cellDataArray || []);
+                    const cells: CellData[] = planningData.cellDataArray || [];
+                    setGridCells(cells);
+
+                    // Derive hottest postcodes from grid: score by activity + approval, then reverse geocode
+                    if (cells.length > 0) {
+                        setLoadingPostcodes(true);
+                        try {
+                            const scored = cells.map((cell) => {
+                                const activity = cell.results?.filtered?.length ?? 0;
+                                const approvalResult = cell.results?.approvalRateResult ?? [];
+                                const avgApproval = approvalResult.length
+                                    ? approvalResult.reduce((s: number, p: { approvalRate: number }) => s + p.approvalRate, 0) / approvalResult.length
+                                    : 0;
+                                const score = activity * 10 + avgApproval;
+                                return { cell, score };
+                            });
+                            scored.sort((a, b) => b.score - a.score);
+                            const topN = scored.slice(0, 10);
+
+                            const ranked: RankedPostcode[] = [];
+                            for (let i = 0; i < topN.length; i++) {
+                                const { cell } = topN[i];
+                                const rev = await fetch('/api/geocode/reverse', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ lat: cell.lat, lng: cell.lng }),
+                                }).then((r) => r.json());
+                                const postcode = rev?.postcode ?? `${cell.lat.toFixed(4)}, ${cell.lng.toFixed(4)}`;
+                                ranked.push({
+                                    postcode,
+                                    rank: i + 1,
+                                    lat: cell.lat,
+                                    lng: cell.lng,
+                                });
+                            }
+                            setRankedPostcodes(ranked);
+                        } catch (err) {
+                            console.error('Error resolving hottest postcodes:', err);
+                        } finally {
+                            setLoadingPostcodes(false);
+                        }
+                    }
                     setPlanningIncomeSeries(planningData.income || []);
+                    setLeftPanelOpen(true);
                 } catch (err) {
                     console.error('Error fetching planning data:', err);
                 } finally {
@@ -275,128 +319,176 @@ export default function InsightPage() {
 
     return (
         <div className="flex h-screen w-full bg-gray-200 overflow-hidden relative">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                .left-panel-scroll {
+                    scrollbar-width: thin;
+                    scrollbar-color: #6b7280 #e5e7eb;
+                }
+                .left-panel-scroll::-webkit-scrollbar {
+                    width: 10px;
+                }
+                .left-panel-scroll::-webkit-scrollbar-track {
+                    background: #e5e7eb;
+                    border-radius: 5px;
+                    margin: 4px 0;
+                }
+                .left-panel-scroll::-webkit-scrollbar-thumb {
+                    background: #6b7280;
+                    border-radius: 5px;
+                    border: 2px solid #e5e7eb;
+                }
+                .left-panel-scroll::-webkit-scrollbar-thumb:hover {
+                    background: #4b5563;
+                }
+            `}} />
             {/* Floating Search Bar - top left, pushed right when left panel is open */}
             <div
-                className={`absolute top-5 z-[500] bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4 w-full max-w-xl transition-[left] duration-300 ease-in-out ${leftPanelOpen ? 'left-[21rem]' : 'left-5'}`}
+                className={`absolute top-5 z-[500] w-full max-w-xl transition-[left] duration-300 ease-in-out pb-3 font-sans antialiased ${leftPanelOpen ? 'left-[25rem]' : 'left-5'}`}
             >
-                <div className="flex items-end gap-3">
-                    <div className="flex-1">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
-                        <input
-                            type="text"
-                            value={location}
-                            onChange={(e) => setLocation(e.target.value)}
-                            placeholder="Enter location"
-                            className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                        />
+                <div className="relative bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4">
+                    <div className="flex items-end gap-3">
+                        <div className="flex-1">
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 tracking-tight">Location</label>
+                            <input
+                                type="text"
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                                placeholder="Enter location"
+                                className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 tracking-tight"
+                            />
+                        </div>
+                        <div className="w-28">
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 tracking-tight">Radius (km)</label>
+                            <input
+                                type="number"
+                                value={radius}
+                                onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (e.target.value === '' || (!isNaN(val) && val >= 0 && val <= 5)) {
+                                        setRadius(e.target.value);
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                        if (val > 5) setRadius('5');
+                                        if (val < 0) setRadius('0');
+                                    }
+                                }}
+                                placeholder="Radius"
+                                min="0"
+                                max="5"
+                                step="0.1"
+                                className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 tracking-tight"
+                            />
+                        </div>
+                        <button
+                            onClick={handleSearch}
+                            disabled={searchingLocation}
+                            className="bg-gray-800 text-white px-6 py-2.5 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
+                        >
+                            {searchingLocation ? 'Searching...' : 'Search'}
+                        </button>
                     </div>
-                    <div className="w-28">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Radius (km)</label>
-                        <input
-                            type="number"
-                            value={radius}
-                            onChange={(e) => {
-                                const val = parseFloat(e.target.value);
-                                if (e.target.value === '' || (!isNaN(val) && val >= 0 && val <= 5)) {
-                                    setRadius(e.target.value);
-                                }
-                            }}
-                            onBlur={(e) => {
-                                const val = parseFloat(e.target.value);
-                                if (!isNaN(val)) {
-                                    if (val > 5) setRadius('5');
-                                    if (val < 0) setRadius('0');
-                                }
-                            }}
-                            placeholder="Radius"
-                            min="0"
-                            max="5"
-                            step="0.1"
-                            className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                        />
+
+                    <div
+                        className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
+                    >
+                        <div className="min-h-0">
+                            {expandedDetails && (
+                                <div className="pt-3 border-t border-gray-300 mt-3">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 tracking-tight">Tell me about your use case</label>
+                                    <textarea
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        rows={3}
+                                        placeholder="I want to open up a bakery..."
+                                        className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none tracking-tight leading-relaxed"
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    <button
-                        onClick={() => setExpandedDetails(!expandedDetails)}
-                        className="bg-gray-200 text-gray-600 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors text-sm font-medium"
-                    >
-                        {expandedDetails ? '▼' : '▶'}
-                    </button>
-
-                    {/* Search Button */}
-                    <button
-                        onClick={handleSearch}
-                        disabled={searchingLocation}
-                        className="bg-gray-800 text-white px-6 py-2 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {searchingLocation ? 'Searching...' : 'Search'}
-                    </button>
-
-                    {/* Refresh Postcodes Button */}
-                    <button
-                        onClick={handleFetchPostcodes}
-                        disabled={loadingPostcodes}
-                        className="bg-gray-200 text-gray-600 px-3 py-2 rounded-lg border border-gray-300 hover:bg-gray-300 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Refresh ranked postcodes"
-                    >
-                        {loadingPostcodes ? '…' : '↻'}
-                    </button>
                 </div>
-                {expandedDetails && (
-                    <div className="pt-4 mt-1 border-t border-gray-300">
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            rows={2}
-                            placeholder="Enter description"
-                            className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                        />
-                    </div>
-                )}
+
+                {/* Minimal tab bulging out the bottom */}
+                <button
+                    type="button"
+                    onClick={() => setExpandedDetails(!expandedDetails)}
+                    className="absolute left-1/2 -translate-x-1/2 bottom-0 translate-y-[15%] w-8 h-6 flex items-center justify-center rounded-full bg-gray-100  text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+                >
+                    {expandedDetails ? '▲' : '▼'}
+                </button>
             </div>
 
             {/* Left Panel */}
             <div
-                className={`transition-all duration-300 ease-in-out bg-gray-100 border-r border-gray-300 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-80' : 'w-0'} overflow-hidden`}
+                className={`transition-all left-panel-scroll duration-300 ease-in-out bg-gray-100 border-r border-gray-300 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-96' : 'w-0'} overflow-hidden`}
             >
-                <div className="p-5 w-80 h-full flex flex-col overflow-y-auto">
-                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight">Ranked Postcodes</h2>
+                <div className="left-panel-scroll p-5 w-96 h-full flex flex-col overflow-y-auto min-h-0">
+                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight">Recent Growth</h2>
                     {rankedPostcodes.length === 0 ? (
                         <p className="text-sm text-gray-400">No postcodes loaded yet.</p>
                     ) : (
-                        <div className="space-y-4 flex-1">
+                        <div className="space-y-4 flex-1 min-h-0">
                             {rankedPostcodes.map((pc, index) => {
                                 const isHovered = hoveredPostcode === pc.postcode;
                                 return (
-                                    <div key={`${pc.postcode}-${index}`} className="border border-gray-300 rounded-lg bg-white p-4 shadow-sm">
-                                        {/* Rank badge on outer box */}
+                                    <div
+                                        key={`${pc.postcode}-${index}`}
+                                        className={`border rounded-lg bg-white p-4 shadow-sm cursor-pointer transition-all ${isHovered
+                                            ? 'border-gray-500 bg-gray-50 shadow-md'
+                                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                                            }`}
+                                    >
+                                        {/* Outer tile content: rank badge */}
                                         <div
-                                            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 mb-3"
+                                            className="w-7 h-7 rounded-full flex items-center justify-center text-white font-semibold text-xs mb-3"
                                             style={{ backgroundColor: '#6b7280' }}
                                         >
                                             {pc.rank}
                                         </div>
 
-                                        {/* Top tile - Postcode info */}
+                                        {/* Inner top tile: postcode info */}
                                         <div
                                             onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
                                             onMouseEnter={() => setHoveredPostcode(pc.postcode)}
                                             onMouseLeave={() => setHoveredPostcode(null)}
-                                            className={`p-3 border rounded-lg cursor-pointer transition-all mb-2 ${isHovered
-                                                ? 'border-gray-500 bg-gray-200 shadow-sm'
-                                                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
-                                                }`}
+                                            className="p-3 border border-gray-200 rounded-lg bg-white mb-2 cursor-pointer"
                                         >
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-mono font-semibold text-gray-800 break-all">{pc.postcode}</div>
-                                                {pc.lat && pc.lng && (
-                                                    <div className="text-xs text-gray-400 mt-1">{pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}</div>
-                                                )}
+                                            <div className="text-sm font-mono font-semibold text-gray-800 break-all">
+                                                {pc.postcode}
                                             </div>
+                                            {pc.lat != null && pc.lng != null && (
+                                                <div className="text-xs text-gray-500 mt-1">
+                                                    {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
+                                                </div>
+                                            )}
                                         </div>
 
-                                        {/* Bottom tile - Empty for now */}
-                                        <div className="p-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all min-h-20">
+                                        {/* Inner bottom tile: listings/analysis placeholder */}
+                                        {/* Inner bottom tile: address listings */}
+                                        <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                                            {exampleAddressListingsByPostcode[pc.postcode]?.length ? (
+                                                <div className="space-y-2">
+                                                    {exampleAddressListingsByPostcode[pc.postcode].map((listing, idx) => (
+                                                        <a
+                                                            key={`${pc.postcode}-listing-${idx}`}
+                                                            href={listing.link}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="block text-xs text-gray-700 bg-white border border-gray-200 rounded-md px-2.5 py-2 hover:bg-gray-100 transition-colors"
+                                                        >
+                                                            {listing.address}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-gray-400 italic">
+                                                    No addresses available.
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -410,7 +502,7 @@ export default function InsightPage() {
             <button
                 onClick={() => setLeftPanelOpen(!leftPanelOpen)}
                 className="absolute top-1/2 -translate-y-1/2 z-[1000] bg-gray-100 border border-gray-300 shadow-md rounded-r-lg p-2.5 hover:bg-gray-200 transition-all"
-                style={{ left: leftPanelOpen ? '320px' : '0px', transition: 'left 0.3s ease-in-out' }}
+                style={{ left: leftPanelOpen ? '384px' : '0px', transition: 'left 0.3s ease-in-out' }}
             >
                 <span className="text-base font-bold text-gray-500">{leftPanelOpen ? '‹' : '›'}</span>
             </button>
