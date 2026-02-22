@@ -11,12 +11,12 @@ const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
 const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
 const SEARCH_MARKER_SIZE = 40; // Smaller size for search marker
 
-// Normalized value 0–1 → heat color (gray → green → yellow → orange → red); green only for lowest values
+// Normalized value 0–1 → heat color (gray → green → yellow → orange → red)
 function getNormalizedHeatColor(t: number): string {
     if (t <= 0 || isNaN(t)) return '#E5E7EB';
-    if (t <= 0.1) return '#86EFAC';
-    if (t <= 0.35) return '#FDE047';
-    if (t <= 0.6) return '#FDBA74';
+    if (t <= 0.25) return '#86EFAC';
+    if (t <= 0.5) return '#FDE047';
+    if (t <= 0.75) return '#FDBA74';
     return '#FCA5A5';
 }
 
@@ -195,12 +195,18 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
             });
         }
 
-        const min = values.length ? Math.min(...values) : 0;
-        const max = values.length ? Math.max(...values) : 1;
+        // Income: use fixed UK reference range so absolute value matters, not just relative position among cells
+        const INCOME_MIN = 1_000;
+        const INCOME_MAX = 60_000;
+        const min = mode === 'income' ? INCOME_MIN : (values.length ? Math.min(...values) : 0);
+        const max = mode === 'income' ? INCOME_MAX : (values.length ? Math.max(...values) : 1);
         const range = max - min || 1;
 
         const colors = gridCells.map((_, i) => {
-            const t = range > 0 ? (values[i] - min) / range : 0;
+            if (mode === 'income' && values[i] <= 0) return '#E5E7EB'; // explicit gray for no-data
+            const rawT = Math.max(0, Math.min(1, range > 0 ? (values[i] - min) / range : 0));
+            // Income: invert so high income → green; clamp away from 0 to avoid gray threshold
+            const t = mode === 'income' ? Math.max(0.01, 1 - rawT) : rawT;
             return getNormalizedHeatColor(t);
         });
 
