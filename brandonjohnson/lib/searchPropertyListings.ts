@@ -1,4 +1,4 @@
-import { GenerateContentResponse, GoogleGenAI } from '@google/genai';
+import { FunctionCallingConfigMode, GenerateContentResponse, GoogleGenAI, ThinkingLevel } from '@google/genai';
 import dotenv from 'dotenv';
 
 // Load environment variables from the .env file
@@ -54,42 +54,44 @@ function parseListings(response: GenerateContentResponse): PropertyListing[] {
 export async function searchPropertyListings(businessIdea: string, postcode: string) {
     // Construct a prompt tailored to finding commercial real estate
     const prompt = 
-`You are an expert UK commercial real estate assistant.
-
-Your task is to find 3 real, currently active commercial property listings (to rent or buy) that are highly suitable for the provided business idea and located within the target postcode.
-
-Search & Selection Guidelines:
-1. First, analyze the provided business idea to determine the exact property classification required (retail, office, or industrial).
-2. Search the web for verifiable, active listings strictly within the provided UK postcode.
-3. You must rely on live web search data. Do not hallucinate, invent, or guess addresses.
-
-Output Constraints:
-- Output exactly 3 addresses, separated by a newline.
-- Use absolute plaintext. 
-- STRICTLY NO markdown, bullet points, numbers, introductory filler, or commentary. Output ONLY the addresses.
+`Act as a commercial real estate assistant in the UK.
+Look for suitable commercial property listings (retail, office, or industrial depending on the business needs)     
+Please search the web for real, currently listed commercial properties to rent or buy in this specific area.
+Provide a newline-separated list of the top 3 most relevant listings.
+Just list the addresses in plaintext without any additional commentary or formatting.
 
 Example Output:
 14 High Street, London, SW1A 1AA
+
 Unit 3, Riverside Industrial Estate, London, SW1A 2BB
+
 Floor 2, The Apex Building, London, SW1A 3CC
 
-Business Idea: "${businessIdea}"; 
+Base your search on the following business idea: 
+"${businessIdea}"
 
 Target Postcode: ${postcode}`;
 
     try {
         const response = await ai.models.generateContent({
             // Using the flash model as it is fast and supports search grounding
+            // model: 'gemini-3-flash-preview', 
             model: 'gemini-2.5-flash', 
             contents: prompt,
             config: {
                 // Enable the Google Search tool so Gemini can fetch live listings
                 tools: [{ googleSearch: {} }],
+                // thinkingConfig: {
+                //     thinkingBudget: 0
+                // },
+                // thinkingConfig: {
+                //     thinkingLevel: ThinkingLevel.MINIMAL,
+                // },
                 // // Optional: Adjust temperature for more factual, less creative responses
-                // temperature: 0.2
+                temperature: 0,
             }
         });
-        // console.dir(response, { depth: null, colors: true });
+        console.dir(response, { depth: null, colors: true });
         return parseListings(response);
     } catch (error) {
         console.error("Error fetching property listings from Gemini API:", error);
