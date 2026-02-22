@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap, useM
 import { Icon, DomEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
+import { SearchProposalsResult } from "@/lib/searchProposals";
 
 const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
 const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
@@ -158,34 +159,15 @@ interface DynamicMapProps {
     mapCenter?: { lat: number; lng: number; zoom: number } | null;
     searchMarker?: { lat: number; lng: number; radiusKm?: number } | null;
     onMapClick?: (lat: number, lng: number) => void;
-    onGridCellClick?: (cell: {
-        lat: number;
-        lng: number;
-        size_meters: number;
-        results: {
-            all: unknown[];
-            filtered: unknown[];
-            businessCategoryChartPoints: { name: string; value: number }[];
-            approvalRateResult: { name: string; approvalRate: number }[];
-            incomeGraphPoints?: { name: string; value: number }[];
-        };
-    }) => void;
-    gridCells?: Array<{
-        lat: number;
-        lng: number;
-        size_meters: number;
-        results: {
-            all: unknown[];
-            filtered: unknown[];
-            businessCategoryChartPoints: { name: string; value: number }[];
-            approvalRateResult: { name: string; approvalRate: number }[];
-            incomeGraphPoints?: { name: string; value: number }[];
-        };
-    }>;
+    onGridCellClick?: (cell: SearchProposalsResult['cellDataArray'][number]) => void;
+    gridCells?: SearchProposalsResult['cellDataArray'];
     heatmapMode?: 'recommended' | 'residential' | 'income' | null;
+    rankingScoresBySquareIndex?: Record<number, number>;
+    hoveredGridCellKey?: string | null;
+    onGridCellHover?: (key: string | null) => void;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [], heatmapMode = null }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [], heatmapMode = null, rankingScoresBySquareIndex = {}, hoveredGridCellKey = null, onGridCellHover }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -198,15 +180,10 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
         const values: number[] = [];
 
         if (mode === 'residential') {
-            gridCells.forEach((cell) => values.push(cell.results.filtered.length));
+            gridCells.forEach((cell) => values.push(cell.results.newHousesOverPeriod));
         } else if (mode === 'recommended') {
-            gridCells.forEach((cell) => {
-                const activity = cell.results.filtered.length;
-                const arr = cell.results.approvalRateResult ?? [];
-                const avgApproval = arr.length
-                    ? arr.reduce((s: number, p: { approvalRate: number }) => s + p.approvalRate, 0) / arr.length
-                    : 0;
-                values.push(activity * 10 + avgApproval);
+            gridCells.forEach((_, index) => {
+                values.push(rankingScoresBySquareIndex[index + 1] ?? 0);
             });
         } else if (mode === 'income') {
             gridCells.forEach((cell) => {
@@ -228,7 +205,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
         });
 
         return { cellColors: colors };
-    }, [gridCells, heatmapMode]);
+    }, [gridCells, heatmapMode, rankingScoresBySquareIndex]);
 
     return (
         <div className="relative w-full h-full">
@@ -259,6 +236,8 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                         [cell.lat - (halfSize * latDegPerM), cell.lng - (halfSize * lngDegPerM)],
                         [cell.lat + (halfSize * latDegPerM), cell.lng + (halfSize * lngDegPerM)]
                     ];
+                    const cellKey = `${cell.lat.toFixed(6)},${cell.lng.toFixed(6)}`;
+                    const isHovered = hoveredGridCellKey === cellKey;
 
                     return (
                         <Rectangle
@@ -266,10 +245,10 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                             bounds={bounds}
                             pathOptions={{
                                 color: '#4B5563',
-                                weight: 1,
-                                opacity: 0.5,
+                                weight: isHovered ? 2 : 1,
+                                opacity: isHovered ? 0.9 : 0.5,
                                 fillColor: color,
-                                fillOpacity: 0.4,
+                                fillOpacity: isHovered ? 0.6 : 0.4,
                             }}
                             eventHandlers={{
                                 mouseover: (e) => {
@@ -279,6 +258,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                                         opacity: 0.9,
                                         fillOpacity: 0.6,
                                     });
+                                    onGridCellHover?.(cellKey);
                                 },
                                 mouseout: (e) => {
                                     e.target.setStyle({
@@ -287,6 +267,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                                         opacity: 0.5,
                                         fillOpacity: 0.4,
                                     });
+                                    onGridCellHover?.(null);
                                 },
                                 click: (e) => {
                                     DomEvent.stop(e);

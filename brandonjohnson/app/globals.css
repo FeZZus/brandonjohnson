@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
 :root {
-  --background: 220 13% 91%;   /* #e5e7eb */
-  --foreground: 221 39% 11%;   /* #111827 */
+  --background: #f3f4f6;
+  --foreground: #0f172a;
+  --accent: #6366f1;
+  --accent-muted: #c7d2fe;
 }
 
 @theme inline {
@@ -37,9 +39,14 @@
 }
 
 body {
-  background: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+::selection {
+  background: var(--accent-muted);
+  color: var(--foreground);
 }
 
 /* Left panel scrollbar */

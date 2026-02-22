@@ -1,23 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { RankedPostcode } from '../api/postcodes/route';
 import { geocodePostcodes, geocodeLocation } from '../../lib/geocode';
 import GraphModal from './GraphModal';
+import {SearchProposalsResult} from "@/lib/searchProposals";
 
-type CellData = {
-    lat: number;
-    lng: number;
-    size_meters: number;
-    results: {
-        all: any[];
-        filtered: any[];
-        businessCategoryChartPoints: { name: string; value: number }[];
-        approvalRateResult: { name: string; approvalRate: number }[];
-        incomeGraphPoints?: { name: string; value: number }[];
-    };
-};
+type CellData = SearchProposalsResult['cellDataArray'][number];
 type AddressListing = {
     address: string;
     link: string;
@@ -63,14 +53,15 @@ const DynamicMap = dynamic(() => import('./DynamicMap'), {
 
 export default function InsightPage() {
     const [leftPanelOpen, setLeftPanelOpen] = useState(false);
-    const [expandedDetails, setExpandedDetails] = useState(true);
+    const [expandedDetails, setExpandedDetails] = useState(false);
+    const searchBarRef = useRef<HTMLDivElement>(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
     const [location, setLocation] = useState('');
     const [radius, setRadius] = useState('5');
     const [description, setDescription] = useState('');
     const [rankedPostcodes, setRankedPostcodes] = useState<RankedPostcode[]>([]);
-    const [loadingPostcodes, setLoadingPostcodes] = useState(false);
+    const [loadingRankings, setLoadingRankings] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
     const [hoveredPostcode, setHoveredPostcode] = useState<string | null>(null);
@@ -80,12 +71,31 @@ export default function InsightPage() {
     const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; radiusKm?: number } | null>(null);
     const [gridCells, setGridCells] = useState<CellData[]>([]);
     const [loadingGrid, setLoadingGrid] = useState(false);
+    const [loadingJustifications, setLoadingJustifications] = useState(false);
+    const [rankingScoresBySquareIndex, setRankingScoresBySquareIndex] = useState<Record<number, number>>({});
+    const [postcodeJustifications, setPostcodeJustifications] = useState<Record<number, string>>({});
     const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
     const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
     const [planningIncomeSeries, setPlanningIncomeSeries] = useState<{ name: string; value: number }[]>([]);
-    type HeatmapMode = 'recommended' | 'residential' | 'income' | null;
-    const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>(null);
+    const [hoveredGridCellKey, setHoveredGridCellKey] = useState<string | null>(null);
+
+    const tileRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+    const makeCellKey = (lat?: number, lng?: number) => {
+        if (lat == null || lng == null) return null;
+        return `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    };
+
+    useEffect(() => {
+        if (!hoveredGridCellKey) return;
+        const el = tileRefs.current[hoveredGridCellKey];
+        if (el) {
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    }, [hoveredGridCellKey]);
+    type HeatmapMode = 'recommended' | 'residential' | 'income';
+    const [heatmapMode, setHeatmapMode] = useState<HeatmapMode>('residential');
 
     // Aggregate planning data from all grid cells
     useEffect(() => {
@@ -140,7 +150,7 @@ export default function InsightPage() {
 
     useEffect(() => {
         async function fetchRankedPostcodes() {
-            setLoadingPostcodes(true);
+            setLoadingRankings(true);
             setError(null);
             try {
                 const response = await fetch('/api/postcodes', { method: 'GET' });
@@ -161,7 +171,7 @@ export default function InsightPage() {
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Failed to load ranked postcodes');
             } finally {
-                setLoadingPostcodes(false);
+                setLoadingRankings(false);
             }
         }
         // fetchRankedPostcodes();
@@ -187,6 +197,10 @@ export default function InsightPage() {
         }
 
         setSearchingLocation(true);
+        setHeatmapMode('residential');
+        setRankingScoresBySquareIndex({});
+        setPostcodeJustifications({});
+        setLoadingJustifications(false);
         setError(null);
         try {
             const result = await geocodeLocation(location);
@@ -238,26 +252,64 @@ export default function InsightPage() {
                     const cells: CellData[] = planningData.cellDataArray || [];
                 
                     setGridCells(cells);
+                    setPlanningIncomeSeries(planningData.income || []);
+                    setLoadingGrid(false);
 
-                    // Derive hottest postcodes from grid: score by activity + approval, then reverse geocode
+                    // Derive hottest postcodes from grid using rankSquares via API, then reverse geocode
                     if (cells.length > 0) {
-                        setLoadingPostcodes(true);
+                        setLoadingRankings(true);
                         try {
-                            const scored = cells.map((cell) => {
-                                const activity = cell.results?.filtered?.length ?? 0;
-                                const approvalResult = cell.results?.approvalRateResult ?? [];
-                                const avgApproval = approvalResult.length
-                                    ? approvalResult.reduce((s: number, p: { approvalRate: number }) => s + p.approvalRate, 0) / approvalResult.length
-                                    : 0;
-                                const score = activity * 10 + avgApproval;
-                                return { cell, score };
+                            const rankingsResponse = await fetch('/api/rankings', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    businessInfo: description,
+                                    cellDataArray: cells,
+                                }),
                             });
-                            scored.sort((a, b) => b.score - a.score);
-                            const topN = scored.slice(0, 10);
+
+                            if (!rankingsResponse.ok) {
+                                throw new Error(`Failed to rank squares: ${rankingsResponse.status}`);
+                            }
+
+                            const rankingsPayload = await rankingsResponse.json();
+                            const rankings = Array.isArray(rankingsPayload?.rankings) ? rankingsPayload.rankings : [];
+
+                            const allScoresByIndex = rankings.reduce((acc: Record<number, number>, item: { squareIndex?: number; score?: number }) => {
+                                if (
+                                    typeof item?.squareIndex === 'number' &&
+                                    item.squareIndex >= 1 &&
+                                    item.squareIndex <= cells.length &&
+                                    typeof item?.score === 'number'
+                                ) {
+                                    acc[item.squareIndex] = item.score;
+                                }
+                                return acc;
+                            }, {});
+                            setRankingScoresBySquareIndex(allScoresByIndex);
+
+                            const topRankings = rankings
+                                .filter((item: { squareIndex?: number; score?: number }) =>
+                                    typeof item?.squareIndex === 'number' &&
+                                    item.squareIndex >= 1 &&
+                                    item.squareIndex <= cells.length &&
+                                    typeof item?.score === 'number'
+                                )
+                                .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+                                .slice(0, 10);
 
                             const ranked: RankedPostcode[] = [];
-                            for (let i = 0; i < topN.length; i++) {
-                                const { cell } = topN[i];
+                            const rankedWithContext: Array<{
+                                postcode: string;
+                                rank: number;
+                                lat: number;
+                                lng: number;
+                                score: number;
+                                squareData: CellData['results'];
+                            }> = [];
+                            for (let i = 0; i < topRankings.length; i++) {
+                                const ranking = topRankings[i];
+                                const cell = cells[ranking.squareIndex - 1];
                                 const rev = await fetch('/api/geocode/reverse', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -270,21 +322,68 @@ export default function InsightPage() {
                                     lat: cell.lat,
                                     lng: cell.lng,
                                 });
+                                rankedWithContext.push({
+                                    postcode,
+                                    rank: i + 1,
+                                    lat: cell.lat,
+                                    lng: cell.lng,
+                                    score: ranking.score,
+                                    squareData: cell.results,
+                                });
                             }
+                            console.log('default postcodes:');
+                            console.dir(cells);
+                            console.log('Ranked postcodes:');
+                            console.dir(ranked);
                             setRankedPostcodes(ranked);
+                            setLoadingRankings(false);
+
+                            if (rankedWithContext.length > 0) {
+                                setLoadingJustifications(true);
+                                const justificationEntries = await Promise.all(
+                                    rankedWithContext.map(async (item) => {
+                                        try {
+                                            const response = await fetch('/api/justification', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    businessInfo: description,
+                                                    squareData: item.squareData,
+                                                    score: item.score,
+                                                }),
+                                            });
+
+                                            if (!response.ok) {
+                                                return [item.rank, 'Insight unavailable for this recommendation right now.'] as const;
+                                            }
+
+                                            const payload = await response.json();
+                                            const justification = typeof payload?.justification === 'string'
+                                                ? payload.justification
+                                                : 'Insight unavailable for this recommendation right now.';
+
+                                            return [item.rank, justification] as const;
+                                        } catch {
+                                            return [item.rank, 'Insight unavailable for this recommendation right now.'] as const;
+                                        }
+                                    })
+                                );
+
+                                setPostcodeJustifications(Object.fromEntries(justificationEntries));
+                                setLoadingJustifications(false);
+                            }
                         } catch (err) {
                             console.error('Error resolving hottest postcodes:', err);
+                            setLoadingJustifications(false);
                         } finally {
-                            setLoadingPostcodes(false);
+                            setLoadingRankings(false);
                         }
                     }
-                    setPlanningIncomeSeries(planningData.income || []);
                     setLeftPanelOpen(true);
                     // Hide the radius circle after search (keep the pin)
                     setSearchMarker(prev => prev ? { lat: prev.lat, lng: prev.lng } : null);
                 } catch (err) {
                     console.error('Error fetching planning data:', err);
-                } finally {
                     setLoadingGrid(false);
                 }
             } else {
@@ -303,9 +402,12 @@ export default function InsightPage() {
         setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
         // Clear existing grid squares and selection
         setGridCells([]);
+        setRankingScoresBySquareIndex({});
         setSelectedGridCell(null);
         setModalOpen(false);
         setPlanningIncomeSeries([]);
+        setPostcodeJustifications({});
+        setLoadingJustifications(false);
 
         // Set marker and circle with default radius
         const radiusKm = parseFloat(radius);
@@ -350,22 +452,29 @@ export default function InsightPage() {
             `}} />
             {/* Floating Search Bar - top left, pushed right when left panel is open */}
             <div
+                ref={searchBarRef}
                 className={`absolute top-5 z-[500] w-full max-w-xl transition-[left] duration-300 ease-in-out pb-3 font-sans antialiased ${leftPanelOpen ? 'left-[29rem]' : 'left-5'}`}
             >
-                <div className="relative bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4">
-                    <div className="flex items-end gap-3">
+                <div className="relative bg-gray-100 border border-gray-300 rounded-xl shadow-md p-1">
+                    <div className="flex items-center gap-3">
                         <div className="flex-1">
-                            <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Location</label>
                             <input
                                 type="text"
                                 value={location}
                                 onChange={(e) => setLocation(e.target.value)}
-                                placeholder="Enter location"
-                                className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 tracking-tight"
+                                onFocus={() => setExpandedDetails(true)}
+                                onBlur={() => {
+                                    setTimeout(() => {
+                                        if (!searchBarRef.current?.contains(document.activeElement)) {
+                                            setExpandedDetails(false);
+                                        }
+                                    }, 0);
+                                }}
+                                placeholder="Search places"
+                                className="w-full rounded-lg  px-3 py-2.5 text-s text-gray-900 placeholder:text-[#5e5e5e] focus:border-white focus:outline-none  tracking-tight"
                             />
                         </div>
                         <div className="w-28">
-                            <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Radius (km)</label>
                             <input
                                 type="number"
                                 value={radius}
@@ -382,35 +491,37 @@ export default function InsightPage() {
                                         if (val < 0) setRadius('0');
                                     }
                                 }}
-                                placeholder="Radius"
+                                placeholder="Radius (km)"
                                 min="0"
                                 max="5"
                                 step="0.1"
-                                className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 tracking-tight"
+                                className="w-full px-3 py-2.5 border-l border-gray-300 text-s text-gray-900 placeholder:text-gray-400 focus:border-white focus:outline-none tracking-tight"
                             />
                         </div>
                         <button
+                            type="button"
                             onClick={handleSearch}
                             disabled={searchingLocation}
-                            className="bg-gray-800 text-white px-6 py-2.5 rounded-lg hover:bg-gray-700 transition-colors font-medium text-sm whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed tracking-tight"
+                            className="flex items-center justify-center w-9 h-9 shrink-0 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label={searchingLocation ? 'Searching...' : 'Search'}
                         >
-                            {searchingLocation ? 'Searching...' : 'Search'}
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="11" cy="11" r="8" />
+                                <path d="m21 21-4.3-4.3" />
+                            </svg>
                         </button>
                     </div>
 
-                    <div
-                        className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
-                    >
+                    <div className={`grid transition-[grid-template-rows] duration-200 ease-out overflow-hidden ${expandedDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                         <div className="min-h-0">
                             {expandedDetails && (
-                                <div className="pt-3 border-t border-gray-300 mt-3">
-                                    <label className="block text-xs font-medium text-gray mb-1.5 tracking-tight">Tell me about your use case</label>
+                                <div className="pt-1 border-t border-gray-300 mt-1">
                                     <textarea
                                         value={description}
                                         onChange={(e) => setDescription(e.target.value)}
                                         rows={3}
                                         placeholder="I want to open up a bakery..."
-                                        className="w-full rounded-lg border border-gray-300 bg-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none tracking-tight leading-relaxed"
+                                        className="w-full rounded-lg px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-white focus:outline-none resize-none tracking-tight leading-relaxed"
                                     />
                                 </div>
                             )}
@@ -442,14 +553,25 @@ export default function InsightPage() {
                             <button
                                 key={mode}
                                 type="button"
-                                onClick={() => setHeatmapMode(heatmapMode === mode ? null : mode)}
+                                onClick={() => {
+                                    if (mode === 'recommended' && loadingRankings) {
+                                        return;
+                                    }
+                                    setHeatmapMode(mode);
+                                }}
+                                disabled={mode === 'recommended' && loadingRankings}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap cursor-pointer ${
                                     heatmapMode === mode
-                                        ? 'bg-gray-800 text-white'
+                                        ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
+                                } ${mode === 'recommended' && loadingRankings ? 'opacity-80 cursor-not-allowed' : ''}`}
                             >
-                                {label}
+                                <span className="inline-flex items-center gap-2">
+                                    {label}
+                                    {mode === 'recommended' && loadingRankings && (
+                                        <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-label="Loading recommendations" />
+                                    )}
+                                </span>
                             </button>
                         ))}
                     </div>
@@ -461,26 +583,48 @@ export default function InsightPage() {
                 className={`transition-all left-panel-scroll duration-300 ease-in-out bg-gray-100 border-r border-gray-300 shadow-sm flex-shrink-0 ${leftPanelOpen ? 'w-[28rem]' : 'w-0'} overflow-hidden`}
             >
                 <div className="left-panel-scroll p-5 w-[28rem] h-full flex flex-col overflow-y-auto min-h-0">
-                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight">Recommendations</h2>
-                    {rankedPostcodes.length === 0 ? (
+                    <h2 className="text-base font-semibold text-gray-800 mb-4 tracking-tight inline-flex items-center gap-2">
+                        Recommendations
+                        {loadingRankings && (
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-label="Loading recommendations" />
+                        )}
+                    </h2>
+                    {loadingRankings && rankedPostcodes.length === 0 ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                            Fetching recommendation rankings...
+                        </div>
+                    ) : rankedPostcodes.length === 0 ? (
                         <p className="text-sm text-gray-400">No postcodes loaded yet.</p>
                     ) : (
                         <div className="space-y-4 flex-1 min-h-0">
                             {rankedPostcodes.map((pc, index) => {
-                                const isHovered = hoveredPostcode === pc.postcode;
+                                const cellKey = makeCellKey(pc.lat, pc.lng);
+                                const isHovered = hoveredPostcode === pc.postcode || (cellKey != null && cellKey === hoveredGridCellKey);
                                 return (
                                     <div
                                         key={`${pc.postcode}-${index}`}
+                                        ref={(el) => {
+                                            if (cellKey) {
+                                                tileRefs.current[cellKey] = el;
+                                            }
+                                        }}
+                                        onMouseEnter={() => {
+                                            setHoveredPostcode(pc.postcode);
+                                            setHoveredGridCellKey(cellKey);
+                                        }}
+                                        onMouseLeave={() => {
+                                            setHoveredPostcode(null);
+                                            setHoveredGridCellKey(null);
+                                        }}
                                         className={`border rounded-lg bg-white p-4 shadow-sm cursor-pointer transition-all ${isHovered
-                                            ? 'border-gray-500 bg-gray-50 shadow-md'
-                                            : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                                            ? 'border-gray-700 bg-gray-50 shadow-lg ring-2 ring-gray-400/60'
+                                            : 'border-gray-300 hover:border-gray-500 hover:bg-gray-50'
                                             }`}
                                     >
                                         {/* Card title row: rank + postcode + coordinates */}
                                         <div
                                             onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
-                                            onMouseEnter={() => setHoveredPostcode(pc.postcode)}
-                                            onMouseLeave={() => setHoveredPostcode(null)}
                                             className="flex items-center gap-3 mb-2 cursor-pointer"
                                         >
                                             <div
@@ -514,15 +658,16 @@ export default function InsightPage() {
 
                                         {/* Why invest: 2–3 lines of insight (placeholder for now) */}
                                         <div className="p-3 mb-2">
-                                            <p className="text-xs text-gray-700 leading-relaxed">
-                                                Strong planning approval rates and rising commercial demand in this area.
-                                            </p>
-                                            <p className="text-xs text-gray-700 leading-relaxed mt-1">
-                                                Above-average income growth and good transport links support long-term value.
-                                            </p>
-                                            <p className="text-xs text-gray-700 leading-relaxed mt-1">
-                                                Placeholder: replace with generated insight per postcode.
-                                            </p>
+                                            {loadingJustifications && !postcodeJustifications[pc.rank] ? (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                                    Generating insight...
+                                                </div>
+                                            ) : (
+                                                <p className="text-xs text-gray-700 leading-relaxed">
+                                                    {postcodeJustifications[pc.rank] || 'Insight unavailable for this recommendation right now.'}
+                                                </p>
+                                            )}
                                         </div>
 
                                         {/* Inner bottom tile: address listings */}
@@ -575,8 +720,22 @@ export default function InsightPage() {
                     onMapClick={handleMapClick}
                     gridCells={gridCells}
                     heatmapMode={heatmapMode}
+                    rankingScoresBySquareIndex={rankingScoresBySquareIndex}
+                    hoveredGridCellKey={hoveredGridCellKey}
+                    onGridCellHover={(key) => setHoveredGridCellKey(key)}
                     onGridCellClick={(cell) => {
                         setSelectedGridCell(cell);
+                        // Find matching postcode from rankedPostcodes by lat/lng
+                        const matchingPostcode = rankedPostcodes.find(
+                            (pc) => 
+                                pc.lat != null && 
+                                pc.lng != null && 
+                                Math.abs(pc.lat - cell.lat) < 0.00001 && 
+                                Math.abs(pc.lng - cell.lng) < 0.00001
+                        );
+                        if (matchingPostcode) {
+                            setSelectedPostcode(matchingPostcode);
+                        }
                         setModalOpen(true);
                     }}
                     onMarkerClick={(postcode) => {
@@ -587,18 +746,26 @@ export default function InsightPage() {
                         setHoveredPostcode(postcode);
                     }}
                 />
-                {loadingPostcodes && (
-                    <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
-                        <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
-                            <div className="text-sm text-gray-600">Loading ranked postcodes...</div>
-                        </div>
-                    </div>
-                )}
-                {loadingGrid && (
-                    <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
-                        <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
-                            <div className="text-sm text-gray-600">Loading planning data...</div>
-                        </div>
+                {(loadingRankings || loadingGrid || loadingJustifications) && (
+                    <div className="absolute top-4 right-4 z-[600] pointer-events-none flex flex-col gap-2">
+                        {loadingRankings && (
+                            <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                Loading recommendation rankings...
+                            </div>
+                        )}
+                        {loadingGrid && (
+                            <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                Loading planning data...
+                            </div>
+                        )}
+                        {loadingJustifications && (
+                            <div className="bg-gray-100/95 border border-gray-300 rounded-xl px-3 py-2 shadow-lg text-sm text-gray-600 inline-flex items-center gap-2">
+                                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
+                                Loading insights...
+                            </div>
+                        )}
                     </div>
                 )}
                 {error && (

@@ -50,7 +50,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
         if (activeTab === 0) {
             const chartData = planningChartPoints;
             return chartData.length > 0
-                ? <PieChartComponent data={chartData} title="Business Activity" />
+                ? <PieChartComponent data={chartData} title="Business Activity By Type" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No business activity data available</div>;
         }
 
@@ -85,14 +85,29 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
 
     return (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-2000">
-            <div className="bg-gray-100 border border-gray-300 rounded-xl shadow-2xl w-225 h-150 flex overflow-hidden">
+            <div className="bg-gray-100 border border-gray-300 rounded-xl shadow-2xl w-225 h-175 flex overflow-hidden">
                 {/* Main Content */}
                 <div className="flex-1 p-6 flex flex-col overflow-hidden relative">
                     <div className="mb-4">
                         <h3 className="text-2xl font-bold text-gray-800">{tabs[activeTab]}</h3>
-                        {gridCell && (
+                        {gridCell && postcode && activeTab === 0 && (
                             <p className="text-sm text-gray-500 mt-0.5">
-                                In this location | {gridCell.results.filtered.length} businesses
+                                {postcode.postcode} | Business Activity Index: {gridCell.results.filtered.length}
+                            </p>
+                        )}
+                        {gridCell && postcode && activeTab !== 0 && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                {postcode.postcode}
+                            </p>
+                        )}
+                        {gridCell && !postcode && activeTab === 0 && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                In this location | Business Activity Index: {gridCell.results.filtered.length}
+                            </p>
+                        )}
+                        {gridCell && !postcode && activeTab !== 0 && (
+                            <p className="text-sm text-gray-500 mt-0.5">
+                                In this location
                             </p>
                         )}
                         {postcode && !gridCell && (
@@ -132,7 +147,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                             type="button"
                             onClick={() => setActiveTab(index)}
                             className={`flex-1 flex items-center justify-center px-2 font-bold text-s transition-colors duration-300 cursor-pointer last:border-b-0 ${activeTab === index
-                                ? 'text-gray-700 bg-[#f3f4f6]'
+                                ? 'text-white bg-indigo-600'
                                 : 'bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                                 }`}
                         >
