@@ -341,6 +341,7 @@ export async function searchProposals(params: {
   return { cellDataArray };
 }
 
+export type SearchProposalsResult = Awaited<ReturnType<typeof searchProposals>>;
 
 // --- Runner ---
 
