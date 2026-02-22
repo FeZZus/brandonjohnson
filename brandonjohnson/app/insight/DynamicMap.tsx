@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, useMap, useMapEvents } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import { Icon, DomEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { RankedPostcode } from '../api/postcodes/route';
 
@@ -241,7 +241,8 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                             fillOpacity: 0.4,
                         }}
                         eventHandlers={{
-                            click: () => {
+                            click: (e) => {
+                                DomEvent.stop(e);
                                 if (onGridCellClick) {
                                     onGridCellClick(cell);
                                 }
