@@ -140,11 +140,6 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                     </div>
 
                     <div className="mt-4 pt-4 pb-4 text-center">
-                        <p className="text-s text-gray-700 leading-relaxed max-w-md mx-auto">
-                            {activeTab === 0 && 'Placeholder: analysis of business activity mix and what it means for this area will appear here.'}
-                            {activeTab === 1 && 'Placeholder: income trend summary and implications for investment will appear here.'}
-                            {activeTab === 2 && 'Placeholder: approval rate analysis and outlook will appear here.'}
-                        </p>
                     </div>
 
                     <button
