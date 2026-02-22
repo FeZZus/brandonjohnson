@@ -493,10 +493,23 @@ export default function InsightPage() {
                                                 {pc.postcode}
                                             </div>
                                             {pc.lat != null && pc.lng != null && (
-                                                <div className="text-xs text-gray-500 ml-auto text-right flex-shrink-0">
+                                                <div className="text-xs text-gray-500 text-right flex-shrink-0">
                                                     {pc.lat.toFixed(4)}, {pc.lng.toFixed(4)}
                                                 </div>
                                             )}
+                                            <a
+                                                href={`https://www.google.com/maps?q=&layer=c&cbll=${encodeURIComponent(pc.postcode).replace(/%20/g, '+')}`}
+                                                target="_blank"
+                                                rel="noreferrer noopener"
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="flex-shrink-0 p-1 rounded text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors cursor-pointer"
+                                                aria-label="Open in Google Maps Street View"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                                    <circle cx="12" cy="10" r="3" />
+                                                </svg>
+                                            </a>
                                         </div>
 
                                         {/* Why invest: 2–3 lines of insight (placeholder for now) */}
