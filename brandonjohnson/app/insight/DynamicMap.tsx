@@ -136,7 +136,7 @@ function MapResize() {
 function CustomZoomControl() {
     const map = useMap();
     return (
-        <div className="absolute top-4 right-4 z-[1000] flex flex-col rounded-lg border border-gray-300 bg-gray-100 shadow-md overflow-hidden">
+        <div className="absolute top-4 right-4 z-1000 flex flex-col rounded-lg border border-gray-300 bg-gray-100 shadow-md overflow-hidden">
             <button
                 type="button"
                 onClick={() => map.zoomIn()}
@@ -195,20 +195,31 @@ interface DynamicMapProps {
     mapCenter?: { lat: number; lng: number; zoom: number } | null;
     searchMarker?: { lat: number; lng: number; radiusKm?: number } | null;
     onMapClick?: (lat: number, lng: number) => void;
-    onGridCellClick?: (cell: any) => void;
+    onGridCellClick?: (cell: {
+        lat: number;
+        lng: number;
+        size_meters: number;
+        results: {
+            all: unknown[];
+            filtered: unknown[];
+            businessCategoryChartPoints: { name: string; value: number }[];
+            approvalRateResult: { name: string; approvalRate: number }[];
+        };
+    }) => void;
     gridCells?: Array<{
         lat: number;
         lng: number;
         size_meters: number;
         results: {
-            filtered: any[];
+            all: unknown[];
+            filtered: unknown[];
             businessCategoryChartPoints: { name: string; value: number }[];
             approvalRateResult: { name: string; approvalRate: number }[];
         };
     }>;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter, searchMarker, onMapClick, onGridCellClick, gridCells = [] }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [] }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),

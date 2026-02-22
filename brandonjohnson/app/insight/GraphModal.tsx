@@ -11,12 +11,18 @@ interface RankedPostcode {
     lng?: number;
 }
 
+interface GridCellSummary {
+    results: {
+        filtered: unknown[];
+    };
+}
+
 
 export default function GraphModal({ isOpen, onClose, postcode, gridCell, planningBusinessCategories = [], planningApprovalRates = [], incomeSeries = [] }: {
     isOpen: boolean;
     onClose: () => void;
     postcode?: RankedPostcode | null;
-    gridCell?: any | null;
+    gridCell?: GridCellSummary | null;
     planningBusinessCategories?: { name: string; value: number }[];
     planningApprovalRates?: { name: string; approvalRate: number }[];
     incomeSeries?: { name: string; value: number }[];
@@ -78,8 +84,8 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
     };
 
     return (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[2000]">
-            <div className="bg-gray-100 border border-gray-300 rounded-xl shadow-2xl w-[900px] h-[600px] flex overflow-hidden">
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-2000">
+            <div className="bg-gray-100 border border-gray-300 rounded-xl shadow-2xl w-225 h-150 flex overflow-hidden">
                 {/* Main Content */}
                 <div className="flex-1 p-6 flex flex-col overflow-hidden">
                     <div className="mb-4">
@@ -114,7 +120,7 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                         <button
                             key={index}
                             onClick={() => setActiveTab(index)}
-                            className={`py-3 px-2 rounded-lg font-medium text-xs text-center leading-tight break-words whitespace-normal transition-colors ${activeTab === index
+                            className={`py-3 px-2 rounded-lg font-medium text-xs text-center leading-tight wrap-break-word whitespace-normal transition-colors ${activeTab === index
                                 ? 'bg-gray-700 text-white'
                                 : 'bg-gray-300 text-gray-600 hover:bg-gray-400 hover:text-gray-800'
                                 }`}
