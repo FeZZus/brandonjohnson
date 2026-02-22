@@ -36,7 +36,7 @@ export default function InsightPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
     const [hoveredPostcode, setHoveredPostcode] = useState<string | null>(null);
-    
+
     const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
     const [searchingLocation, setSearchingLocation] = useState(false);
     const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; radiusKm?: number } | null>(null);
@@ -45,7 +45,7 @@ export default function InsightPage() {
     const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
     const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
-    
+
     // Aggregate planning data from all grid cells
     useEffect(() => {
         if (gridCells.length === 0) {
@@ -53,7 +53,7 @@ export default function InsightPage() {
             setAggregatedApprovalRates([]);
             return;
         }
-        
+
         // Aggregate business categories
         const categoryMap = new Map<string, number>();
         gridCells.forEach(cell => {
@@ -64,7 +64,7 @@ export default function InsightPage() {
         const aggregatedCategories = Array.from(categoryMap.entries())
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
-        
+
         // Aggregate approval rates (average by year)
         const yearMap = new Map<string, { total: number; count: number }>();
         gridCells.forEach(cell => {
@@ -79,7 +79,7 @@ export default function InsightPage() {
         const aggregatedRates = Array.from(yearMap.entries())
             .map(([name, data]) => ({ name, approvalRate: data.total / data.count }))
             .sort((a, b) => parseInt(a.name) - parseInt(b.name));
-        
+
         setAggregatedBusinessCategories(aggregatedCategories);
         setAggregatedApprovalRates(aggregatedRates);
     }, [gridCells]);
@@ -158,7 +158,7 @@ export default function InsightPage() {
             setError('Please enter a location');
             return;
         }
-        
+
         // Collapse the details panel when searching
         setExpandedDetails(false);
         const radiusNum = parseFloat(radius);
@@ -189,7 +189,7 @@ export default function InsightPage() {
                     else if (radiusKm <= 200) zoomLevel = 8;
                     else zoomLevel = 7;
                 }
-                
+
                 setMapCenter({
                     lat: result.lat,
                     lng: result.lng,
@@ -201,18 +201,18 @@ export default function InsightPage() {
                     radiusKm: radius ? parseFloat(radius) : undefined,
                 });
                 setError(null);
-                
+
                 // Fetch planning data for grid cells
                 setLoadingGrid(true);
                 try {
                     const planningResponse = await fetch('/api/planning', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            lng: result.lng, 
-                            lat: result.lat, 
+                        body: JSON.stringify({
+                            lng: result.lng,
+                            lat: result.lat,
                             radius: radiusNum,
-                            yearsBack: 5 
+                            yearsBack: 5
                         })
                     });
                     const planningData = await planningResponse.json();
@@ -237,7 +237,11 @@ export default function InsightPage() {
     const handleMapClick = async (lat: number, lng: number) => {
         // Set location as coordinates
         setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-        
+        // Clear existing grid squares and selection
+        setGridCells([]);
+        setSelectedGridCell(null);
+        setModalOpen(false);
+
         // Set marker and circle with default radius
         const radiusKm = parseFloat(radius);
         setSearchMarker({
@@ -245,7 +249,7 @@ export default function InsightPage() {
             lng,
             radiusKm: !isNaN(radiusKm) ? radiusKm : 5,
         });
-        
+
         // Center map on clicked location
         setMapCenter({
             lat,
@@ -355,17 +359,16 @@ export default function InsightPage() {
                                         >
                                             {pc.rank}
                                         </div>
-                                        
+
                                         {/* Top tile - Postcode info */}
                                         <div
                                             onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
                                             onMouseEnter={() => setHoveredPostcode(pc.postcode)}
                                             onMouseLeave={() => setHoveredPostcode(null)}
-                                            className={`p-3 border rounded-lg cursor-pointer transition-all mb-2 ${
-                                                isHovered
+                                            className={`p-3 border rounded-lg cursor-pointer transition-all mb-2 ${isHovered
                                                     ? 'border-gray-500 bg-gray-200 shadow-sm'
                                                     : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-sm font-mono font-semibold text-gray-800 break-all">{pc.postcode}</div>
@@ -374,7 +377,7 @@ export default function InsightPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        
+
                                         {/* Bottom tile - Empty for now */}
                                         <div className="p-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all min-h-20">
                                         </div>
