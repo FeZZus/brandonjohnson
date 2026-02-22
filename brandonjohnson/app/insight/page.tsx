@@ -5,19 +5,9 @@ import dynamic from 'next/dynamic';
 import type { RankedPostcode } from '../api/postcodes/route';
 import { geocodePostcodes, geocodeLocation } from '../../lib/geocode';
 import GraphModal from './GraphModal';
+import {SearchProposalsResult} from "@/lib/searchProposals";
 
-type CellData = {
-    lat: number;
-    lng: number;
-    size_meters: number;
-    results: {
-        all: any[];
-        filtered: any[];
-        businessCategoryChartPoints: { name: string; value: number }[];
-        approvalRateResult: { name: string; approvalRate: number }[];
-        incomeGraphPoints?: { name: string; value: number }[];
-    };
-};
+type CellData = SearchProposalsResult['cellDataArray'][number];
 type AddressListing = {
     address: string;
     link: string;
@@ -255,25 +245,40 @@ export default function InsightPage() {
                 
                     setGridCells(cells);
 
-                    // Derive hottest postcodes from grid: score by activity + approval, then reverse geocode
+                    // Derive hottest postcodes from grid using rankSquares via API, then reverse geocode
                     if (cells.length > 0) {
                         setLoadingPostcodes(true);
                         try {
-                            const scored = cells.map((cell) => {
-                                const activity = cell.results?.filtered?.length ?? 0;
-                                const approvalResult = cell.results?.approvalRateResult ?? [];
-                                const avgApproval = approvalResult.length
-                                    ? approvalResult.reduce((s: number, p: { approvalRate: number }) => s + p.approvalRate, 0) / approvalResult.length
-                                    : 0;
-                                const score = activity * 10 + avgApproval;
-                                return { cell, score };
+                            const rankingsResponse = await fetch('/api/rankings', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    businessInfo: description,
+                                    cellDataArray: cells,
+                                }),
                             });
-                            scored.sort((a, b) => b.score - a.score);
-                            const topN = scored.slice(0, 10);
+
+                            if (!rankingsResponse.ok) {
+                                throw new Error(`Failed to rank squares: ${rankingsResponse.status}`);
+                            }
+
+                            const rankingsPayload = await rankingsResponse.json();
+                            const rankings = Array.isArray(rankingsPayload?.rankings) ? rankingsPayload.rankings : [];
+
+                            const topRankings = rankings
+                                .filter((item: { squareIndex?: number; score?: number }) =>
+                                    typeof item?.squareIndex === 'number' &&
+                                    item.squareIndex >= 1 &&
+                                    item.squareIndex <= cells.length &&
+                                    typeof item?.score === 'number'
+                                )
+                                .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+                                .slice(0, 10);
 
                             const ranked: RankedPostcode[] = [];
-                            for (let i = 0; i < topN.length; i++) {
-                                const { cell } = topN[i];
+                            for (let i = 0; i < topRankings.length; i++) {
+                                const ranking = topRankings[i];
+                                const cell = cells[ranking.squareIndex - 1];
                                 const rev = await fetch('/api/geocode/reverse', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -287,6 +292,10 @@ export default function InsightPage() {
                                     lng: cell.lng,
                                 });
                             }
+                            console.log('default postcodes:');
+                            console.dir(cells);
+                            console.log('Ranked postcodes:');
+                            console.dir(ranked);
                             setRankedPostcodes(ranked);
                         } catch (err) {
                             console.error('Error resolving hottest postcodes:', err);
