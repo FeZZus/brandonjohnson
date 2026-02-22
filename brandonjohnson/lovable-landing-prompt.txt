@@ -1,0 +1,25 @@
+Generate a clean, aesthetic, and minimal landing page for the following product.
+
+PRODUCT
+- A UK property and location insights tool. Users search by location and radius, then see planning data, income trends, and ranked postcodes on an interactive map with heatmaps (recommended score, residential activity, median income). The app helps people explore where to invest or open a business based on real planning and income data.
+- Keep copy short: one strong headline, one or two short supporting lines, and a single primary call-to-action (e.g. "Get started" or "Explore insights") that links to the main app experience. No long paragraphs or multiple feature blocks.
+
+STYLE
+- Minimal and clean. Plenty of whitespace, restrained typography, subtle or no decoration.
+- Aesthetic but not busy: avoid heavy gradients, too many colours, or cluttered sections.
+- Feel professional and trustworthy, suitable for property/business research.
+
+TECH STACK (match these exactly so the output can be dropped into our repo)
+- Framework: Next.js 16 (App Router)
+- React 19
+- TypeScript
+- Styling: Tailwind CSS v4 (with @tailwindcss/postcss)
+- Fonts: Geist (sans) and Geist Mono from next/font/google, using CSS variables --font-geist-sans and --font-geist-mono
+- File: a single page component in app/page.tsx (no extra layout changes needed; we already have a root layout with Geist and globals)
+- Use semantic HTML and standard Next.js patterns (e.g. next/link for internal links)
+
+ROUTING
+- Primary CTA should navigate to /search (e.g. href="/search") so users go from landing to the search/insight flow.
+
+OUTPUT
+- Provide the full contents of app/page.tsx only, unless a small tweak to app/layout.tsx or app/globals.css is required—then include those too. No separate components unless necessary for clarity; prefer a single, readable page component.

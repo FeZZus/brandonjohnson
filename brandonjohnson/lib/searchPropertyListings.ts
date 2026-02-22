@@ -1,4 +1,4 @@
-import { GenerateContentResponse, GoogleGenAI } from '@google/genai';
+import { FunctionCallingConfigMode, GenerateContentResponse, GoogleGenAI, ThinkingLevel } from '@google/genai';
 import dotenv from 'dotenv';
 
 // Load environment variables from the .env file
@@ -51,28 +51,44 @@ function parseListings(response: GenerateContentResponse): PropertyListing[] {
  * @param {string} postcode - The UK postcode to search around (e.g., "E1 6AN")
  * @returns {Promise<PropertyListing[]>} - The parsed property listings
  */
-async function findPropertyListings(businessIdea: string, postcode: string) {
+export async function searchPropertyListings(businessIdea: string, postcode: string) {
     // Construct a prompt tailored to finding commercial real estate
     const prompt = 
 `Act as a commercial real estate assistant in the UK.
 Look for suitable commercial property listings (retail, office, or industrial depending on the business needs)     
 Please search the web for real, currently listed commercial properties to rent or buy in this specific area.
-Provide a newline-separated list of the top 5 most relevant listings.
+Provide a newline-separated list of the top 3 most relevant listings.
 Just list the addresses in plaintext without any additional commentary or formatting.
-The listings should be in the UK postcode: ${postcode}.
+
+Example Output:
+14 High Street, London, SW1A 1AA
+
+Unit 3, Riverside Industrial Estate, London, SW1A 2BB
+
+Floor 2, The Apex Building, London, SW1A 3CC
+
 Base your search on the following business idea: 
-"${businessIdea}".`; 
+"${businessIdea}"
+
+Target Postcode: ${postcode}`;
 
     try {
         const response = await ai.models.generateContent({
             // Using the flash model as it is fast and supports search grounding
+            // model: 'gemini-3-flash-preview', 
             model: 'gemini-2.5-flash', 
             contents: prompt,
             config: {
                 // Enable the Google Search tool so Gemini can fetch live listings
                 tools: [{ googleSearch: {} }],
-                // Optional: Adjust temperature for more factual, less creative responses
-                temperature: 0.1
+                // thinkingConfig: {
+                //     thinkingBudget: 0
+                // },
+                // thinkingConfig: {
+                //     thinkingLevel: ThinkingLevel.MINIMAL,
+                // },
+                // // Optional: Adjust temperature for more factual, less creative responses
+                temperature: 0,
             }
         });
         console.dir(response, { depth: null, colors: true });
@@ -90,7 +106,7 @@ Base your search on the following business idea:
 //     console.log(`Searching live listings for a '${businessIdea}' near ${postcode}...\n`);
     
 //     try {
-//         const listings = await findPropertyListings(businessIdea, postcode);
+//         const listings = await searchPropertyListings(businessIdea, postcode);
 //         console.log("=== Recommended Listings ===");
 //         console.log(listings);
 //     } catch (error) {

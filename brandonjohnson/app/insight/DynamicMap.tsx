@@ -10,13 +10,13 @@ const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
 const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
 const SEARCH_MARKER_SIZE = 40; // Smaller size for search marker
 
-// Helper function to get color based on business density
-function getDensityColor(count: number): string {
-    if (count === 0) return '#E5E7EB'; // Gray for empty
-    if (count <= 5) return '#86EFAC'; // Light green
-    if (count <= 10) return '#FDE047'; // Yellow
-    if (count <= 20) return '#FDBA74'; // Orange
-    return '#FCA5A5'; // Red for high density
+// Normalized value 0–1 → heat color (gray → green → yellow → orange → red); green only for lowest values
+function getNormalizedHeatColor(t: number): string {
+    if (t <= 0 || isNaN(t)) return '#E5E7EB';
+    if (t <= 0.1) return '#86EFAC';
+    if (t <= 0.35) return '#FDE047';
+    if (t <= 0.6) return '#FDBA74';
+    return '#FCA5A5';
 }
 
 // Cache for marker icons
@@ -167,6 +167,7 @@ interface DynamicMapProps {
             filtered: unknown[];
             businessCategoryChartPoints: { name: string; value: number }[];
             approvalRateResult: { name: string; approvalRate: number }[];
+            incomeGraphPoints?: { name: string; value: number }[];
         };
     }) => void;
     gridCells?: Array<{
@@ -178,16 +179,56 @@ interface DynamicMapProps {
             filtered: unknown[];
             businessCategoryChartPoints: { name: string; value: number }[];
             approvalRateResult: { name: string; approvalRate: number }[];
+            incomeGraphPoints?: { name: string; value: number }[];
         };
     }>;
+    heatmapMode?: 'recommended' | 'residential' | 'income' | null;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [] }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [], heatmapMode = null }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
         [postcodes]
     );
+
+    // Compute per-cell values, normalise by min/max, then map to heat colour
+    const { cellColors } = useMemo(() => {
+        const mode = heatmapMode ?? 'residential';
+        const values: number[] = [];
+
+        if (mode === 'residential') {
+            gridCells.forEach((cell) => values.push(cell.results.filtered.length));
+        } else if (mode === 'recommended') {
+            gridCells.forEach((cell) => {
+                const activity = cell.results.filtered.length;
+                const arr = cell.results.approvalRateResult ?? [];
+                const avgApproval = arr.length
+                    ? arr.reduce((s: number, p: { approvalRate: number }) => s + p.approvalRate, 0) / arr.length
+                    : 0;
+                values.push(activity * 10 + avgApproval);
+            });
+        } else if (mode === 'income') {
+            gridCells.forEach((cell) => {
+                const points = cell.results.incomeGraphPoints ?? [];
+                const latest = points.length
+                    ? points.slice().sort((a, b) => parseInt(b.name, 10) - parseInt(a.name, 10))[0]?.value ?? 0
+                    : 0;
+                values.push(latest);
+            });
+        }
+
+        const min = values.length ? Math.min(...values) : 0;
+        const max = values.length ? Math.max(...values) : 1;
+        const range = max - min || 1;
+
+        const colors = gridCells.map((_, i) => {
+            const t = range > 0 ? (values[i] - min) / range : 0;
+            return getNormalizedHeatColor(t);
+        });
+
+        return { cellColors: colors };
+    }, [gridCells, heatmapMode]);
 
     return (
         <div className="relative w-full h-full">
@@ -210,26 +251,14 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
 
                 {/* Grid cells for planning data */}
                 {gridCells.map((cell, index) => {
-                    const count = cell.results.filtered.length;
-                    const color = getDensityColor(count);
-
-                    // Calculate cell bounds from center point and size
-                    // const halfSize = cell.size_meters / 2;
+                    const color = cellColors[index] ?? '#E5E7EB';
                     const halfSize = cell.size_meters;
-
-                    // Approximate degrees per meter
                     const latDegPerM = 1 / 111000;
                     const lngDegPerM = 1 / (111000 * Math.cos((cell.lat * Math.PI) / 180));
-
                     const bounds: [[number, number], [number, number]] = [
                         [cell.lat - (halfSize * latDegPerM), cell.lng - (halfSize * lngDegPerM)],
                         [cell.lat + (halfSize * latDegPerM), cell.lng + (halfSize * lngDegPerM)]
                     ];
-
-                    console.log(`Cell ${index + 1}: Count=${count}, Color=${color}, Bounds=${JSON.stringify(bounds)}`);
-
-                    // Cell 1: Count=56, Color=#FCA5A5, Bounds=[[51.5029414954955,-0.1350021641361522],[51.511950504504505,-0.12052783586384777]]
-
 
                     return (
                         <Rectangle
