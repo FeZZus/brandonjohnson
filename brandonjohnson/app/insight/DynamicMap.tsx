@@ -183,9 +183,11 @@ interface DynamicMapProps {
         };
     }>;
     heatmapMode?: 'recommended' | 'residential' | 'income' | null;
+    hoveredGridCellKey?: string | null;
+    onGridCellHover?: (key: string | null) => void;
 }
 
-export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [], heatmapMode = null }: DynamicMapProps) {
+export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onMarkerClick, onMarkerHover, mapCenter = null, searchMarker, onMapClick, onGridCellClick, gridCells = [], heatmapMode = null, hoveredGridCellKey = null, onGridCellHover }: DynamicMapProps) {
     const defaultCenter: [number, number] = [51.5074, -0.1278];
     const validPostcodes = useMemo(
         () => postcodes.filter(pc => pc.lat !== undefined && pc.lng !== undefined),
@@ -259,6 +261,8 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                         [cell.lat - (halfSize * latDegPerM), cell.lng - (halfSize * lngDegPerM)],
                         [cell.lat + (halfSize * latDegPerM), cell.lng + (halfSize * lngDegPerM)]
                     ];
+                    const cellKey = `${cell.lat.toFixed(6)},${cell.lng.toFixed(6)}`;
+                    const isHovered = hoveredGridCellKey === cellKey;
 
                     return (
                         <Rectangle
@@ -266,10 +270,10 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                             bounds={bounds}
                             pathOptions={{
                                 color: '#4B5563',
-                                weight: 1,
-                                opacity: 0.5,
+                                weight: isHovered ? 2 : 1,
+                                opacity: isHovered ? 0.9 : 0.5,
                                 fillColor: color,
-                                fillOpacity: 0.4,
+                                fillOpacity: isHovered ? 0.6 : 0.4,
                             }}
                             eventHandlers={{
                                 mouseover: (e) => {
@@ -279,6 +283,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                                         opacity: 0.9,
                                         fillOpacity: 0.6,
                                     });
+                                    onGridCellHover?.(cellKey);
                                 },
                                 mouseout: (e) => {
                                     e.target.setStyle({
@@ -287,6 +292,7 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
                                         opacity: 0.5,
                                         fillOpacity: 0.4,
                                     });
+                                    onGridCellHover?.(null);
                                 },
                                 click: (e) => {
                                     DomEvent.stop(e);
