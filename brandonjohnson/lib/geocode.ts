@@ -11,7 +11,7 @@ export async function geocodePostcode(postcode: string): Promise<GeocodeResult |
   try {
     // Clean postcode (remove spaces, uppercase)
     const cleanPostcode = postcode.trim().toUpperCase().replace(/\s+/g, '');
-    
+
     // UK postcode format: typically "SW1A 1AA" or "SW1A1AA"
     if (!/^[A-Z]{1,2}\d{1,2}[A-Z]?\s?\d[A-Z]{2}$/i.test(cleanPostcode)) {
       console.warn(`Invalid UK postcode format: ${postcode}`);
@@ -74,15 +74,12 @@ export async function geocodeLocation(location: string): Promise<GeocodeResult |
       return null;
     }
 
-    // Use Nominatim API for geocoding
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1&countrycodes=gb`,
-      {
-        headers: {
-          'User-Agent': 'BrandonJohnson/1.0', // Required by Nominatim
-        },
-      }
-    );
+    // Call server-side proxy to avoid CORS/UA issues on first request
+    const response = await fetch('/api/geocode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ location }),
+    });
 
     if (!response.ok) {
       console.error(`Geocoding failed: ${response.statusText}`);
@@ -90,17 +87,12 @@ export async function geocodeLocation(location: string): Promise<GeocodeResult |
     }
 
     const data = await response.json();
-    if (!Array.isArray(data) || data.length === 0) {
+    if (!data?.result) {
       console.warn(`No results for location: ${location}`);
       return null;
     }
 
-    const result = data[0];
-    return {
-      lat: parseFloat(result.lat),
-      lng: parseFloat(result.lon),
-      display_name: result.display_name || location,
-    };
+    return data.result;
   } catch (error) {
     console.error(`Error geocoding location ${location}:`, error);
     return null;

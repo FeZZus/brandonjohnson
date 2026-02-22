@@ -6,13 +6,37 @@ import type { RankedPostcode } from '../api/postcodes/route';
 import { geocodePostcodes, geocodeLocation } from '../../lib/geocode';
 import GraphModal from './GraphModal';
 
+type CellData = {
+    lat: number;
+    lng: number;
+    size_meters: number;
+    results: {
+        all: any[];
+        filtered: any[];
+        businessCategoryChartPoints: { name: string; value: number }[];
+        approvalRateResult: { name: string; approvalRate: number }[];
+    };
+};
+
+type CellData = {
+    lat: number;
+    lng: number;
+    size_meters: number;
+    results: {
+        all: any[];
+        filtered: any[];
+        businessCategoryChartPoints: { name: string; value: number }[];
+        approvalRateResult: { name: string; approvalRate: number }[];
+    };
+};
+
 const DynamicMap = dynamic(() => import('./DynamicMap'), {
     ssr: false,
     loading: () => <div className="flex items-center justify-center h-full text-gray-400">Loading map...</div>
 });
 
 export default function InsightPage() {
-    const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+    const [leftPanelOpen, setLeftPanelOpen] = useState(false);
     const [expandedDetails, setExpandedDetails] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [mapKey, setMapKey] = useState(0);
@@ -24,11 +48,54 @@ export default function InsightPage() {
     const [error, setError] = useState<string | null>(null);
     const [selectedPostcode, setSelectedPostcode] = useState<RankedPostcode | null>(null);
     const [hoveredPostcode, setHoveredPostcode] = useState<string | null>(null);
-    
+
     const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number; zoom: number } | null>(null);
     const [searchingLocation, setSearchingLocation] = useState(false);
     const [searchMarker, setSearchMarker] = useState<{ lat: number; lng: number; radiusKm?: number } | null>(null);
-    
+    const [gridCells, setGridCells] = useState<CellData[]>([]);
+    const [loadingGrid, setLoadingGrid] = useState(false);
+    const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
+    const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
+    const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
+
+    // Aggregate planning data from all grid cells
+    useEffect(() => {
+        if (gridCells.length === 0) {
+            setAggregatedBusinessCategories([]);
+            setAggregatedApprovalRates([]);
+            return;
+        }
+
+        // Aggregate business categories
+        const categoryMap = new Map<string, number>();
+        gridCells.forEach(cell => {
+            cell.results.businessCategoryChartPoints.forEach(point => {
+                categoryMap.set(point.name, (categoryMap.get(point.name) || 0) + point.value);
+            });
+        });
+        const aggregatedCategories = Array.from(categoryMap.entries())
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+
+        // Aggregate approval rates (average by year)
+        const yearMap = new Map<string, { total: number; count: number }>();
+        gridCells.forEach(cell => {
+            cell.results.approvalRateResult.forEach(point => {
+                const existing = yearMap.get(point.name) || { total: 0, count: 0 };
+                yearMap.set(point.name, {
+                    total: existing.total + point.approvalRate,
+                    count: existing.count + 1
+                });
+            });
+        });
+        const aggregatedRates = Array.from(yearMap.entries())
+            .map(([name, data]) => ({ name, approvalRate: data.total / data.count }))
+            .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+
+        setAggregatedBusinessCategories(aggregatedCategories);
+        setAggregatedApprovalRates(aggregatedRates);
+    }, [gridCells]);
+
     // Update circle when radius changes
     useEffect(() => {
         if (searchMarker && radius) {
@@ -99,11 +166,12 @@ export default function InsightPage() {
 
     // Handle location search
     const handleSearch = async () => {
+        setLeftPanelOpen(true); // Open left panel when user clicks Search
         if (!location.trim()) {
             setError('Please enter a location');
             return;
         }
-        
+
         // Collapse the details panel when searching
         setExpandedDetails(false);
         const radiusNum = parseFloat(radius);
@@ -134,7 +202,7 @@ export default function InsightPage() {
                     else if (radiusKm <= 200) zoomLevel = 8;
                     else zoomLevel = 7;
                 }
-                
+
                 setMapCenter({
                     lat: result.lat,
                     lng: result.lng,
@@ -146,6 +214,27 @@ export default function InsightPage() {
                     radiusKm: radius ? parseFloat(radius) : undefined,
                 });
                 setError(null);
+
+                // Fetch planning data for grid cells
+                setLoadingGrid(true);
+                try {
+                    const planningResponse = await fetch('/api/planning', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            lng: result.lng,
+                            lat: result.lat,
+                            radius: radiusNum,
+                            yearsBack: 5
+                        })
+                    });
+                    const planningData = await planningResponse.json();
+                    setGridCells(planningData.cellDataArray || []);
+                } catch (err) {
+                    console.error('Error fetching planning data:', err);
+                } finally {
+                    setLoadingGrid(false);
+                }
             } else {
                 setError(`Location not found: ${location}`);
             }
@@ -157,11 +246,14 @@ export default function InsightPage() {
         }
     };
 
-    // Handle map click
-    const handleMapClick = async (lat: number, lng: number) => {
-        // Set location as coordinates
+    // Handle map click - set location from map coordinates
+    const handleMapClick = (lat: number, lng: number) => {
         setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-        
+        // Clear existing grid squares and selection
+        setGridCells([]);
+        setSelectedGridCell(null);
+        setModalOpen(false);
+
         // Set marker and circle with default radius
         const radiusKm = parseFloat(radius);
         setSearchMarker({
@@ -169,7 +261,7 @@ export default function InsightPage() {
             lng,
             radiusKm: !isNaN(radiusKm) ? radiusKm : 5,
         });
-        
+
         // Center map on clicked location
         setMapCenter({
             lat,
@@ -180,8 +272,10 @@ export default function InsightPage() {
 
     return (
         <div className="flex h-screen w-full bg-gray-200 overflow-hidden relative">
-            {/* Floating Search Bar */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-[500] bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4 w-full max-w-xl mx-6">
+            {/* Floating Search Bar - top left, pushed right when left panel is open */}
+            <div
+                className={`absolute top-5 z-[500] bg-gray-100 border border-gray-300 rounded-xl shadow-md p-4 w-full max-w-xl transition-[left] duration-300 ease-in-out ${leftPanelOpen ? 'left-[21rem]' : 'left-5'}`}
+            >
                 <div className="flex items-end gap-3">
                     <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-500 mb-1">Location</label>
@@ -279,17 +373,16 @@ export default function InsightPage() {
                                         >
                                             {pc.rank}
                                         </div>
-                                        
+
                                         {/* Top tile - Postcode info */}
                                         <div
                                             onClick={() => { setSelectedPostcode(pc); setModalOpen(true); }}
                                             onMouseEnter={() => setHoveredPostcode(pc.postcode)}
                                             onMouseLeave={() => setHoveredPostcode(null)}
-                                            className={`p-3 border rounded-lg cursor-pointer transition-all mb-2 ${
-                                                isHovered
+                                            className={`p-3 border rounded-lg cursor-pointer transition-all mb-2 ${isHovered
                                                     ? 'border-gray-500 bg-gray-200 shadow-sm'
                                                     : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
-                                            }`}
+                                                }`}
                                         >
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-sm font-mono font-semibold text-gray-800 break-all">{pc.postcode}</div>
@@ -298,7 +391,7 @@ export default function InsightPage() {
                                                 )}
                                             </div>
                                         </div>
-                                        
+
                                         {/* Bottom tile - Empty for now */}
                                         <div className="p-3 border border-gray-300 rounded-lg bg-gray-50 hover:bg-gray-100 transition-all min-h-20">
                                         </div>
@@ -328,9 +421,14 @@ export default function InsightPage() {
                     mapCenter={mapCenter}
                     searchMarker={searchMarker}
                     onMapClick={handleMapClick}
+                    gridCells={gridCells}
+                    onGridCellClick={(cell) => {
+                        setSelectedGridCell(cell);
+                        setModalOpen(true);
+                    }}
                     onMarkerClick={(postcode) => {
                         setSelectedPostcode(postcode);
-                        setModalOpen(true);
+                        // Don't open modal for postcode clicks anymore
                     }}
                     onMarkerHover={(postcode) => {
                         setHoveredPostcode(postcode);
@@ -340,6 +438,13 @@ export default function InsightPage() {
                     <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
                         <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
                             <div className="text-sm text-gray-600">Loading ranked postcodes...</div>
+                        </div>
+                    </div>
+                )}
+                {loadingGrid && (
+                    <div className="absolute inset-0 bg-gray-200/60 flex items-center justify-center z-[600]">
+                        <div className="bg-gray-100 border border-gray-300 rounded-xl p-4 shadow-lg">
+                            <div className="text-sm text-gray-600">Loading planning data...</div>
                         </div>
                     </div>
                 )}
@@ -356,8 +461,12 @@ export default function InsightPage() {
                 onClose={() => {
                     setModalOpen(false);
                     setSelectedPostcode(null);
+                    setSelectedGridCell(null);
                 }}
                 postcode={selectedPostcode}
+                gridCell={selectedGridCell}
+                planningBusinessCategories={selectedGridCell?.results.businessCategoryChartPoints || aggregatedBusinessCategories}
+                planningApprovalRates={selectedGridCell?.results.approvalRateResult || aggregatedApprovalRates}
             />
         </div>
     );

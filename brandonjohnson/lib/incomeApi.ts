@@ -1,16 +1,12 @@
 import * as fs from "fs";
+import { get } from "http";
 import * as path from "path";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type IncomeObservation = {
-  year: number;    // Financial year ending, e.g. 2023 = FY 2022/23
-  income: number;  // Net annual household income before housing costs (BHC), nominal £
-};
-
-export type IncomeResult = {
-  msoaCode: string;
-  observations: IncomeObservation[];
+export type IncomeGraphPoint = {
+  name: string;    // Financial year ending, e.g. 2023 = FY 2022/23
+  value: number;  // Net annual household income before housing costs (BHC), nominal £
 };
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -42,17 +38,23 @@ async function getMsoaForLatLng(lat: number, lng: number): Promise<string | null
 export async function getIncomeForLatLng(params: {
   lat: number;
   lng: number;
-}): Promise<IncomeResult | null> {
+}): Promise< IncomeGraphPoint[] > {
   const msoaCode = await getMsoaForLatLng(params.lat, params.lng);
-  if (!msoaCode) return null;
+  if (!msoaCode) return [];
 
   const data = getIncomeData();
   const byYear = data[msoaCode];
-  if (!byYear) return null;
-
-  const observations: IncomeObservation[] = Object.entries(byYear)
+  if (!byYear) return [];
+  const incomeGraphPoints: IncomeGraphPoint[] = Object.entries(byYear)
     .map(([yr, income]) => ({ year: parseInt(yr, 10), income }))
-    .sort((a, b) => a.year - b.year);
+    .sort((a, b) => a.year - b.year)
+    .map(({ year, income }) => ({name: year.toString(), value: income}));
 
-  return { msoaCode, observations };
+  return incomeGraphPoints;
 }
+
+// export async function main() {
+//     console.log(await getIncomeForLatLng({ lat: 51.5074, lng: -0.1278 })); // London
+// }
+
+// main().catch(console.error);
