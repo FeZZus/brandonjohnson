@@ -152,12 +152,6 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
         }
 
         if (activeTab === 0) {
-            return smallResidentialChartData.length > 0
-                ? <LineGraph data={smallResidentialChartData} title="Accepted small residential planning applications (by decided year)" />
-                : <div className="flex items-center justify-center h-full text-sm text-gray-400">No small residential data available.</div>;
-        }
-
-        if (activeTab === 1) {
             return incomeChartData.length > 0
                 ? <LineGraph data={incomeChartData} title="Net Household Income (£)" />
                 : <div className="flex items-center justify-center h-full text-sm text-gray-400">No income data available</div>;
