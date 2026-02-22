@@ -32,14 +32,14 @@ export function buildGrid(params: {
   
   // This maintains your original logic of stretching/shrinking the cells 
   // slightly if radiusMeters isn't a perfect multiple of 500.
-  const actualDiameterMeters = radiusMeters / n;
+  const actualRadiusMeters = radiusMeters / n;
 
   // Degrees per metre, corrected for latitude on the longitude axis
   const latDegPerM = 1 / 111_000;
   const lngDegPerM = 1 / (111_000 * Math.cos((lat * Math.PI) / 180));
 
-  const stepLatDeg = actualDiameterMeters * latDegPerM;
-  const stepLngDeg = actualDiameterMeters * lngDegPerM;
+  const stepLatDeg = actualRadiusMeters * latDegPerM;
+  const stepLngDeg = actualRadiusMeters * lngDegPerM;
 
   // NW corner of the bounding square.
   // Because 'radiusMeters' represents the total width/height of your grid now,
@@ -60,21 +60,21 @@ export function buildGrid(params: {
     }
   }
 
-  return { cells, numRows: n, numCols: n, cellSizeMeters: actualDiameterMeters };
+  return { cells, numRows: n, numCols: n, cellSizeMeters: actualRadiusMeters };
 }
 
-// function main()
-// {
-//   const lat = parseFloat(process.argv[2] ?? "");
-//   const lng = parseFloat(process.argv[3] ?? "");
-//   const radius = parseFloat(process.argv[4] ?? "500");
-//   if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
-//     console.error("Usage: npx tsx scripts/buildGrid.ts <lat> <lng> <radiusMeters>");
-//     console.error("  e.g. npx tsx scripts/buildGrid.ts 51.5074 -0.1276 500");
-//     process.exit(1);
-//   }
-//   const result = buildGrid({ lat, lng, radiusMeters: radius });
-//   console.dir(result, { depth: null, colors: true });
-// }
+function main()
+{
+  const lat = parseFloat(process.argv[2] ?? "");
+  const lng = parseFloat(process.argv[3] ?? "");
+  const radius = parseFloat(process.argv[4] ?? "500");
+  if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
+    console.error("Usage: npx tsx scripts/buildGrid.ts <lat> <lng> <radiusMeters>");
+    console.error("  e.g. npx tsx scripts/buildGrid.ts 51.5074 -0.1276 500");
+    process.exit(1);
+  }
+  const result = buildGrid({ lat, lng, radiusMeters: radius });
+  console.dir(result, { depth: null, colors: true });
+}
 
-// main()
+main()

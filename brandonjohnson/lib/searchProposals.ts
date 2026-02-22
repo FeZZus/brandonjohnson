@@ -1,4 +1,5 @@
 import { buildGrid } from "./grid";
+import { getIncomeForLatLng, IncomeGraphPoint } from "./incomeApi"
 import "dotenv/config";
 
 const BASE_URL = "https://ibex.seractech.co.uk";
@@ -144,11 +145,13 @@ type BusinessCategoryChartPoint = {
   name: string;
   value: number;
 }
+
 // --- Main function ---
 
-async function searchProposals500m(params: {
+async function searchProposalsGridCell(params: {
   lng: number;
   lat: number;
+  radius_meters: number;
   dateFrom: string;      // ISO date e.g. "2015-01-01"
   dateTo: string;
   dateRangeType?: "validated" | "decided" | "any";
@@ -158,15 +161,16 @@ async function searchProposals500m(params: {
   filtered: Application[];
   businessCategoryChartPoints: BusinessCategoryChartPoint[];
   approvalRateResult: RateGraphPoint[];
+  newHousesOverPeriod: number;
+  incomeGraphPoints: IncomeGraphPoint[];
 }> {
   const token = process.env.IBEX_API_KEY;
   if (!token) throw new Error("IBEX_API_KEY environment variable is not set");
-  const RADIUS = 500; // metres
   const body = {
     input: {
       srid: 4326,
       coordinates: [params.lng, params.lat],
-      radius: RADIUS,
+      radius: params.radius_meters,
       date_from: params.dateFrom,
       date_to: params.dateTo,
       date_range_type: params.dateRangeType ?? "any",
@@ -259,7 +263,11 @@ async function searchProposals500m(params: {
   // Stage 3: date categorisation
   const approvalRateResult = genApprovalRate(all);
 
-  return { all, filtered, businessCategoryChartPoints, approvalRateResult };
+  const newHousesOverPeriod = all.reduce((sum, app) => sum + (app.num_new_houses ?? 0), 0);
+
+  const incomeGraphPoints = await getIncomeForLatLng({ lat: params.lat, lng: params.lng });
+
+  return { all, filtered, businessCategoryChartPoints, approvalRateResult, newHousesOverPeriod, incomeGraphPoints };
 }
 
 
@@ -267,7 +275,7 @@ type CellData = {
   lat: number;
   lng: number;
   size_meters: number;
-  results: Awaited<ReturnType<typeof searchProposals500m>>;
+  results: Awaited<ReturnType<typeof searchProposalsGridCell>>;
 }
 
 export async function searchProposals(params: {
@@ -305,9 +313,10 @@ export async function searchProposals(params: {
   // );
   let cellDataArray: CellData[] = [];
   for (const cell of gridResult.cells) {
-    const cellResults = await searchProposals500m({
+    const cellResults = await searchProposalsGridCell({
       lng: cell.lng,
       lat: cell.lat,
+      radius_meters: gridResult.cellSizeMeters,
       dateFrom: params.dateFrom,
       dateTo: params.dateTo,
       dateRangeType: params.dateRangeType,
@@ -335,41 +344,41 @@ export async function searchProposals(params: {
 
 // --- Runner ---
 
-// async function main() {
-//   const lat = parseFloat(process.argv[2] ?? "");
-//   const lng = parseFloat(process.argv[3] ?? "");
-//   if (isNaN(lat) || isNaN(lng)) {
-//     console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
-//     console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
-//     process.exit(1);
-//   }
+async function main() {
+  const lat = parseFloat(process.argv[2] ?? "");
+  const lng = parseFloat(process.argv[3] ?? "");
+  if (isNaN(lat) || isNaN(lng)) {
+    console.error("Usage: npx tsx scripts/searchNewBusinessSites.ts <lat> <lng>");
+    console.error("  e.g. npx tsx scripts/searchNewBusinessSites.ts 51.5074 -0.1276");
+    process.exit(1);
+  }
 
-//   const now = new Date();
-//   const dateTo = now.toISOString().slice(0, 10);
-//   const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
-//     .toISOString()
-//     .slice(0, 10);
+  const now = new Date();
+  const dateTo = now.toISOString().slice(0, 10);
+  const dateFrom = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate())
+    .toISOString()
+    .slice(0, 10);
 
-//   const cellresults = await searchProposals({
-//     lng,
-//     lat,
-//     radius: 3,
-//     dateFrom,
-//     dateTo,
-//   });
+  const cellresults = await searchProposals({
+    lng,
+    lat,
+    radius: 1,
+    dateFrom,
+    dateTo,
+  });
 
-//   // console.log(JSON.stringify(cellresults, null, 2).length);
+  // console.log(JSON.stringify(cellresults, null, 2).length);
 
-//   for (const cellData of cellresults.cellDataArray) {
-//     console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
-//     console.log(`Total from API:        ${cellData.results.all.length}`);
-//     console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
-//     console.log("business category counts:");
-//     console.dir(cellData.results.businessCategoryChartPoints);
-//     console.log("approval rate by year:");
-//     console.dir(cellData.results.approvalRateResult);
-//   }
+  for (const cellData of cellresults.cellDataArray) {
+    console.log(`lat: ${cellData.lat}, lng: ${cellData.lng}, cell size: ${cellData.size_meters}m`);
+    console.log(`Total from API:        ${cellData.results.all.length}`);
+    console.log(`After stage 1 filter:  ${cellData.results.filtered.length}`);
+    console.log("business category counts:");
+    console.dir(cellData.results.businessCategoryChartPoints);
+    console.log("approval rate by year:");
+    console.dir(cellData.results.approvalRateResult);
+  }
 
-// }
+}
 
-// main().catch(console.error);
+main().catch(console.error);
