@@ -8,84 +8,51 @@ const ai = new GoogleGenAI({
 });
 
 function makeSquareString(results: SquareResults): string {
-  const approvalLines = results.approvalRateResult
-    .map(p => `${p.name}: ${p.approvalRate.toFixed(2)}%`)
-    .join('\n');
+  const approvals = results.approvalRateResult
+    .map(p => `${p.name}:${p.approvalRate.toFixed(1)}`)
+    .join('|') || 'na';
 
-  const businessLines = results.businessCategoryChartPoints
-    .map(p => `${p.name}: ${p.value}`)
-    .join('\n');
+  const businesses = results.businessCategoryChartPoints
+    .map(p => `${p.name}:${p.value}`)
+    .join('|') || 'na';
 
-  const incomeLines = results.incomeGraphPoints.length > 0
-    ? results.incomeGraphPoints.map(p => `${p.name}: £${p.value}`).join('\n')
-    : '(no data)';
+  const income = results.incomeGraphPoints.length > 0
+    ? results.incomeGraphPoints.map(p => `${p.name}:${Math.round(p.value)}`).join('|')
+    : 'na';
 
-  return [
-    `approvalRateResult:\n${approvalLines}`,
-    `businessCategoryChartPoints:\n${businessLines}`,
-    `newHousesOverPeriod: ${results.newHousesOverPeriod}`,
-    `incomeGraphPoints:\n${incomeLines}`,
-  ].join('\n\n');
+  return `appr=${approvals};biz=${businesses};homes=${results.newHousesOverPeriod};inc=${income}`;
 }
 
-function buildPrompt(businessInfo: string, squareRanking: { score: number }, squaresString: string): string {
+function buildPrompt(businessInfo: string, score: number, squareString: string): string {
   return `
-You are a location analyst helping justify the score out of 100 given to this area (for opening a small business in the UK).
+Role: UK small-business location analyst.
+Goal: explain why this area received its score.
 
-User's business proposal:
+Business proposal:
 ${businessInfo}
 
-You have been given data for a square with a score of ${squareRanking.score} .
+Scoring signals (high to low):
+1) income (inc) => spending power
+2) planning approvals (appr) => planning friendliness
+3) business mix/count (biz) => demand + competition
+4) homes growth (homes) => future customer base
 
-Task:
-Justify why this square has gotten the score it did.
+Data format:
+- appr=year:approvalPct|... (percent)
+- biz=category:count|...
+- homes=number
+- inc=year:avgIncomeGBP|... OR na
 
-Scoring considerations:
-- Higher local income → stronger customer spending power
-- Higher planning approval rate → permissive environment
-- More commercial variety → footfall (but more competition)
-- More pending residential applications → future customers
+Rules:
+- Write exactly 1-2 sentences.
+- Do not mention the numeric score.
+- Use only provided data; no extra assumptions.
+- If inc=na, mention income uncertainty briefly.
 
-Explanation of square data:
-For each grid square:
+Area data:
+${squareString}
 
-approvalRateResult
-This is a time series showing the percentage of planning applications that were approved in each year.
-
-name represents the year.
-
-approvalRate represents the percentage of approved applications in that year.
-Higher values indicate a more permissive planning environment.
-
-businessCategoryChartPoints
-This shows the number of existing businesses in each category within the square.
-
-name represents the business category (e.g., Restaurant, Retail, Office).
-
-value represents how many businesses of that type currently operate in the area.
-This indicates the level of commercial activity and competition.
-
-newHousesOverPeriod
-This is the total number of new residential housing units approved or built in the area over the measured period.
-Higher values indicate population growth and future customer potential.
-
-incomeGraphPoints
-This is a time series of average household income in the area.
-
-name represents the year.
-
-value represents the average income in pounds for that year.
-Higher values indicate stronger local purchasing power.
-
-Missing or Empty Data
-If incomeGraphPoints is empty, it means income data is unavailable for that square.
-This should be treated as uncertainty and considered in scoring.
-
-For this square, provide:
-- 1-2 sentence explanation
-
-SQUARE DATA:
-${squaresString}
+Score to justify (context only, do not quote): ${score}
 `;
 }
 
@@ -102,13 +69,17 @@ export async function justifySquare(
   squareData: SquareResults,
   score: number
 ): Promise<string> {
-  const squaresString = makeSquareString(squareData);
-  const prompt = buildPrompt(businessInfo, { score }, squaresString);
+  const squareString = makeSquareString(squareData);
+  const prompt = buildPrompt(businessInfo, score, squareString);
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: prompt,
     config: {
+      thinkingConfig: {
+        thinkingBudget: 0
+      },
+      temperature: 0.3,
       responseMimeType: "application/json",
       responseSchema: justificationSchema,
     },
