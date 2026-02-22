@@ -53,13 +53,15 @@ function parseListings(response: GenerateContentResponse): PropertyListing[] {
  */
 async function findPropertyListings(businessIdea: string, postcode: string) {
     // Construct a prompt tailored to finding commercial real estate
-    const prompt = `Act as a commercial real estate assistant in the UK.
-    I am looking for suitable commercial property listings (retail, office, or industrial depending on the business needs)     
-    Please search the web for real, currently listed commercial properties to rent or buy in this specific area.
-    Provide a newline-separated list of the top 5 most relevant listings.
-    Just list the addresses in plaintext without any additional commentary or formatting.
-    Base your search on: "${businessIdea}". 
-    The listings should be in the UK postcode: ${postcode}.`;
+    const prompt = 
+`Act as a commercial real estate assistant in the UK.
+Look for suitable commercial property listings (retail, office, or industrial depending on the business needs)     
+Please search the web for real, currently listed commercial properties to rent or buy in this specific area.
+Provide a newline-separated list of the top 5 most relevant listings.
+Just list the addresses in plaintext without any additional commentary or formatting.
+The listings should be in the UK postcode: ${postcode}.
+Base your search on the following business idea: 
+"${businessIdea}".`; 
 
     try {
         const response = await ai.models.generateContent({
@@ -70,30 +72,30 @@ async function findPropertyListings(businessIdea: string, postcode: string) {
                 // Enable the Google Search tool so Gemini can fetch live listings
                 tools: [{ googleSearch: {} }],
                 // Optional: Adjust temperature for more factual, less creative responses
-                temperature: 0.2 
+                temperature: 0.1
             }
         });
         console.dir(response, { depth: null, colors: true });
         return parseListings(response);
     } catch (error) {
         console.error("Error fetching property listings from Gemini API:", error);
-        throw error;
+        return [];
     }
 }
 
 
-async function main() {
-    const businessIdea = "boutique artisanal bakery and cafe";
-    const postcode = "NW1 9HS";
-    console.log(`Searching live listings for a '${businessIdea}' near ${postcode}...\n`);
+// async function main() {
+//     const businessIdea = "boutique artisanal bakery and cafe";
+//     const postcode = "NW1 9HS";
+//     console.log(`Searching live listings for a '${businessIdea}' near ${postcode}...\n`);
     
-    try {
-        const listings = await findPropertyListings(businessIdea, postcode);
-        console.log("=== Recommended Listings ===");
-        console.log(listings);
-    } catch (error) {
-        console.log("Failed to retrieve listings.");
-    }
-}
+//     try {
+//         const listings = await findPropertyListings(businessIdea, postcode);
+//         console.log("=== Recommended Listings ===");
+//         console.log(listings);
+//     } catch (error) {
+//         console.log("Failed to retrieve listings.");
+//     }
+// }
 
-main();
+// main();
