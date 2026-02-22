@@ -31,11 +31,11 @@ Goal: explain why this area received its score.
 Business proposal:
 ${businessInfo}
 
-Scoring signals (high to low):
-1) income (inc) => spending power
-2) planning approvals (appr) => planning friendliness
-3) business mix/count (biz) => demand + competition
-4) homes growth (homes) => future customer base
+Scoring considerations (in order of importance):
+- Higher local income -> stronger customer spending power
+- Higher planning approval rate -> permissive environment
+- More commercial variety -> footfall (but more competition)
+- More pending residential applications -> future customers
 
 Data format:
 - appr=year:approvalPct|... (percent)
