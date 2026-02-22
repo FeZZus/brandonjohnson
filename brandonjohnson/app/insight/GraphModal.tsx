@@ -9,6 +9,7 @@ interface RankedPostcode {
     rank: number;
     lat?: number;
     lng?: number;
+    score?: number;
 }
 
 interface GridCellSummary {
@@ -91,13 +92,30 @@ export default function GraphModal({ isOpen, onClose, postcode, gridCell, planni
                     <div className="mb-4">
                         <h3 className="text-2xl font-bold text-gray-800">{tabs[activeTab]}</h3>
                         {gridCell && postcode && activeTab === 0 && (
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                {postcode.postcode} | Business Activity Index: {gridCell.results.filtered.length}
+                            <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
+                                <span>{postcode.postcode}</span>
+                                {postcode.score != null && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-indigo-600 text-indigo-600 rounded-md text-xs font-semibold">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 0l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                                        </svg>
+                                        {postcode.score.toFixed(1)}
+                                    </span>
+                                )}
+                                <span>| Business Activity Index: {gridCell.results.filtered.length}</span>
                             </p>
                         )}
                         {gridCell && postcode && activeTab !== 0 && (
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                {postcode.postcode}
+                            <p className="text-sm text-gray-500 mt-0.5 flex items-center gap-2">
+                                <span>{postcode.postcode}</span>
+                                {postcode.score != null && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-indigo-600 text-indigo-600 rounded-md text-xs font-semibold">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M12 0l2.4 7.2h7.6l-6 4.8 2.4 7.2-6-4.8-6 4.8 2.4-7.2-6-4.8h7.6z"/>
+                                        </svg>
+                                        {postcode.score.toFixed(1)}
+                                    </span>
+                                )}
                             </p>
                         )}
                         {gridCell && !postcode && activeTab === 0 && (
