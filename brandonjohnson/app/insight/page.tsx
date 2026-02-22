@@ -45,6 +45,7 @@ export default function InsightPage() {
     const [aggregatedBusinessCategories, setAggregatedBusinessCategories] = useState<{ name: string; value: number }[]>([]);
     const [aggregatedApprovalRates, setAggregatedApprovalRates] = useState<{ name: string; approvalRate: number }[]>([]);
     const [selectedGridCell, setSelectedGridCell] = useState<CellData | null>(null);
+    const [planningIncomeSeries, setPlanningIncomeSeries] = useState<{ name: string; value: number }[]>([]);
 
     // Aggregate planning data from all grid cells
     useEffect(() => {
@@ -233,6 +234,7 @@ export default function InsightPage() {
                             setLoadingPostcodes(false);
                         }
                     }
+                    setPlanningIncomeSeries(planningData.income || []);
                 } catch (err) {
                     console.error('Error fetching planning data:', err);
                 } finally {
@@ -256,6 +258,7 @@ export default function InsightPage() {
         setGridCells([]);
         setSelectedGridCell(null);
         setModalOpen(false);
+        setPlanningIncomeSeries([]);
 
         // Set marker and circle with default radius
         const radiusKm = parseFloat(radius);
@@ -374,8 +377,8 @@ export default function InsightPage() {
                                             onMouseEnter={() => setHoveredPostcode(pc.postcode)}
                                             onMouseLeave={() => setHoveredPostcode(null)}
                                             className={`p-3 border rounded-lg cursor-pointer transition-all mb-2 ${isHovered
-                                                    ? 'border-gray-500 bg-gray-200 shadow-sm'
-                                                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
+                                                ? 'border-gray-500 bg-gray-200 shadow-sm'
+                                                : 'border-gray-300 hover:border-gray-400 hover:bg-gray-200'
                                                 }`}
                                         >
                                             <div className="flex-1 min-w-0">
@@ -461,6 +464,7 @@ export default function InsightPage() {
                 gridCell={selectedGridCell}
                 planningBusinessCategories={selectedGridCell?.results.businessCategoryChartPoints || aggregatedBusinessCategories}
                 planningApprovalRates={selectedGridCell?.results.approvalRateResult || aggregatedApprovalRates}
+                incomeSeries={planningIncomeSeries}
             />
         </div>
     );

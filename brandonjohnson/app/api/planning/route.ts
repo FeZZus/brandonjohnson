@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { searchProposals } from "@/lib/searchProposals";
+import { getIncomeForLatLng } from "@/lib/incomeApi";
 
 export async function POST(request: Request) {
   try {
@@ -18,8 +19,14 @@ export async function POST(request: Request) {
     const dateFrom = new Date(now.getFullYear() - yearsBack, now.getMonth(), now.getDate())
       .toISOString()
       .slice(0, 10);
-    const result = await searchProposals({ lng, lat, radius, dateFrom, dateTo });
-    return NextResponse.json(result);
+    const [planningResult, incomeResult] = await Promise.all([
+      searchProposals({ lng, lat, radius, dateFrom, dateTo }),
+      getIncomeForLatLng({ lat, lng }),
+    ]);
+    return NextResponse.json({
+      ...planningResult,
+      income: incomeResult,
+    });
   } catch (error) {
     return NextResponse.json(
       {

@@ -104,11 +104,11 @@ function genApprovalRate(applications: Application[]) : RateGraphPoint[] {
   // const avgApprovalRate = applications.length ? totalApproved / applications.length * 100 : 0;
 
   for (const app of applications) {
-    if (!app.application_date){
+    if (!app.decided_date){
       continue;
     }
     
-    const year = app.application_date.slice(0, 4);
+    const year = app.decided_date.slice(0, 4);
 
     if (!byYear[year]) {
       byYear[year] = { total: 0, approved: 0, refused: 0, pending: 0, approvalRate: 0 };
@@ -377,6 +377,9 @@ export async function searchProposals(params: {
 //     console.dir(cellData.results.businessCategoryChartPoints);
 //     console.log("approval rate by year:");
 //     console.dir(cellData.results.approvalRateResult);
+//     console.log(`new houses in period: ${cellData.results.newHousesOverPeriod}`);
+//     console.log("income graph points:");
+//     console.dir(cellData.results.incomeGraphPoints);
 //   }
 
 // }
