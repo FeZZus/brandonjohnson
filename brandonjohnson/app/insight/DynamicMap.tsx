@@ -10,21 +10,12 @@ const SEARCH_MARKER_COLOR = '#EF4444'; // Red color for search result marker
 const SEARCH_CIRCLE_COLOR = '#6366F1'; // Indigo color for search radius circle
 const SEARCH_MARKER_SIZE = 40; // Smaller size for search marker
 
-// Helper function to get color based on business density (residential count)
-function getDensityColor(count: number): string {
-    if (count === 0) return '#E5E7EB'; // Gray for empty
-    if (count <= 5) return '#86EFAC'; // Light green
-    if (count <= 10) return '#FDE047'; // Yellow
-    if (count <= 20) return '#FDBA74'; // Orange
-    return '#FCA5A5'; // Red for high density
-}
-
-// Normalized value 0–1 → heat color (gray → green → yellow → orange → red)
+// Normalized value 0–1 → heat color (gray → green → yellow → orange → red); green only for lowest values
 function getNormalizedHeatColor(t: number): string {
     if (t <= 0 || isNaN(t)) return '#E5E7EB';
-    if (t <= 0.25) return '#86EFAC';
-    if (t <= 0.5) return '#FDE047';
-    if (t <= 0.75) return '#FDBA74';
+    if (t <= 0.1) return '#86EFAC';
+    if (t <= 0.35) return '#FDE047';
+    if (t <= 0.6) return '#FDBA74';
     return '#FCA5A5';
 }
 
@@ -201,12 +192,14 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
         [postcodes]
     );
 
-    // Compute per-cell values and global min/max for recommended and income
+    // Compute per-cell values, normalise by min/max, then map to heat colour
     const { cellColors } = useMemo(() => {
         const mode = heatmapMode ?? 'residential';
         const values: number[] = [];
 
-        if (mode === 'recommended') {
+        if (mode === 'residential') {
+            gridCells.forEach((cell) => values.push(cell.results.filtered.length));
+        } else if (mode === 'recommended') {
             gridCells.forEach((cell) => {
                 const activity = cell.results.filtered.length;
                 const arr = cell.results.approvalRateResult ?? [];
@@ -229,21 +222,9 @@ export default function DynamicMap({ postcodes = [], hoveredPostcode = null, onM
         const max = values.length ? Math.max(...values) : 1;
         const range = max - min || 1;
 
-        const colors = gridCells.map((cell, i) => {
-            if (mode === 'residential') {
-                const count = cell.results.filtered.length;
-                return getDensityColor(count);
-            }
-            if (mode === 'recommended') {
-                const t = (values[i] - min) / range;
-                return getNormalizedHeatColor(t);
-            }
-            if (mode === 'income') {
-                const t = (values[i] - min) / range;
-                return getNormalizedHeatColor(t);
-            }
-            const count = cell.results.filtered.length;
-            return getDensityColor(count);
+        const colors = gridCells.map((_, i) => {
+            const t = range > 0 ? (values[i] - min) / range : 0;
+            return getNormalizedHeatColor(t);
         });
 
         return { cellColors: colors };

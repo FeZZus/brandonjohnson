@@ -280,6 +280,8 @@ export default function InsightPage() {
                     }
                     setPlanningIncomeSeries(planningData.income || []);
                     setLeftPanelOpen(true);
+                    // Hide the radius circle after search (keep the pin)
+                    setSearchMarker(prev => prev ? { lat: prev.lat, lng: prev.lng } : null);
                 } catch (err) {
                     console.error('Error fetching planning data:', err);
                 } finally {
