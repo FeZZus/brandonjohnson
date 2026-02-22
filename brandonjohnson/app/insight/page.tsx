@@ -707,6 +707,7 @@ export default function InsightPage() {
 
                                         {/* Inner bottom tile: address listings */}
                                         <div className="p-3 border border-gray-200 rounded-lg bg-gray-50">
+                                            <div className="text-xs font-semibold text-gray-600 mb-2">Recommended Properties</div>
                                             {loadingListings && !addressListingsByPostcode[pc.postcode] ? (
                                                 <div className="flex items-center gap-2 text-xs text-gray-500">
                                                     <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-gray-500 border-r-transparent" aria-hidden />
